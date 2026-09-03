@@ -24,7 +24,8 @@ android {
         applicationId = ownerApplicationId
         minSdk = 29
         targetSdk = 36
-        versionCode = 145
+        // Bump for the bundled CarPlay home icon replacement and adapter migration.
+        versionCode = 147
         versionName = "1.0.0"
 
 //###############################################
@@ -218,4 +219,3 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
-

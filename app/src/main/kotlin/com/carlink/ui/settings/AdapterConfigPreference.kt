@@ -82,12 +82,23 @@ enum class MicSourceConfig(
     /** App/Device mic - this device (Android/Pi running the app) captures microphone input. */
     APP(7),
 
-    /** Phone/Adapter mic - phone uses its own mic, or adapter's mic if physically present. */
-    PHONE(15),
+    /** Phone mic - the adapter asks the connected phone to capture voice input. */
+    PHONE(21),
     ;
 
     companion object {
         val DEFAULT = APP
+
+        // Older builds persisted the Phone option as command 15 (the adapter's
+        // I2S-mic command). Treat it as Phone when reading preferences so an
+        // upgrade does not silently switch users back to the app microphone.
+        private const val LEGACY_PHONE_COMMAND_CODE = 15
+
+        fun fromCommandCode(code: Int): MicSourceConfig =
+            entries.find { it.commandCode == code }
+                ?: if (code == LEGACY_PHONE_COMMAND_CODE) PHONE else DEFAULT
+
+        fun needsPhoneCommandMigration(code: Int): Boolean = code == LEGACY_PHONE_COMMAND_CODE
     }
 }
 
@@ -357,7 +368,7 @@ class AdapterConfigPreference private constructor(
          *
          * HAZARD — partial consumer coverage in MessageSerializer.addChangedSettings
          * (MessageSerializer.kt:518-579): only AUDIO_SOURCE, MIC_SOURCE, WIFI_BAND,
-         * CALL_QUALITY, MEDIA_DELAY, HAND_DRIVE, and GPS_FORWARDING are emitted on a
+         * CALL_QUALITY, MEDIA_DELAY, HAND_DRIVE, GPS_FORWARDING, and CUSTOM_HOME_ICON are emitted on a
          * MINIMAL_PLUS_CHANGES reconnect. VIDEO_RESOLUTION and FPS are added to pendingChanges
          * by their setters but silently NO-OP on the wire under MINIMAL_PLUS_CHANGES. They
          * only actually propagate to the adapter on a FULL init (serializeOpen reads
@@ -387,6 +398,7 @@ class AdapterConfigPreference private constructor(
 
             const val HAND_DRIVE = "hand_drive_mode"
             const val GPS_FORWARDING = "gps_forwarding"
+            const val CUSTOM_HOME_ICON = "custom_home_icon"
         }
     }
 
@@ -449,7 +461,7 @@ class AdapterConfigPreference private constructor(
     val micSourceFlow: Flow<MicSourceConfig> =
         dataStore.data.map { preferences ->
             val code = preferences[KEY_MIC_SOURCE] ?: MicSourceConfig.DEFAULT.commandCode
-            MicSourceConfig.entries.find { it.commandCode == code } ?: MicSourceConfig.DEFAULT
+            MicSourceConfig.fromCommandCode(code)
         }
 
     /**
@@ -457,7 +469,7 @@ class AdapterConfigPreference private constructor(
      */
     fun getMicSourceSync(): MicSourceConfig {
         val code = syncCache.getInt(SYNC_CACHE_KEY_MIC_SOURCE, MicSourceConfig.DEFAULT.commandCode)
-        return MicSourceConfig.entries.find { it.commandCode == code } ?: MicSourceConfig.DEFAULT
+        return MicSourceConfig.fromCommandCode(code)
     }
 
     /**
@@ -730,6 +742,11 @@ class AdapterConfigPreference private constructor(
             logError("Failed to save GPS forwarding preference: $e", tag = "AdapterConfig")
             throw e
         }
+    }
+
+    /** Mark the adapter icon files for upload on the next connection initialization. */
+    suspend fun markCustomHomeIconChanged() {
+        addPendingChange(ConfigKey.CUSTOM_HOME_ICON)
     }
 
     /**
@@ -1037,6 +1054,7 @@ class AdapterConfigPreference private constructor(
      * @return InitMode indicating what configuration to send
      */
     fun getInitializationMode(currentVersionCode: Long): InitMode {
+        migrateLegacyPhoneMicSourceSync()
         val hasCompletedFirstInit = hasCompletedFirstInitSync()
         val pendingChanges = getPendingChangesSync()
         val lastInitVersion = getLastInitVersionCode()
@@ -1047,6 +1065,26 @@ class AdapterConfigPreference private constructor(
             pendingChanges.isNotEmpty() -> InitMode.MINIMAL_PLUS_CHANGES
             else -> InitMode.MINIMAL_ONLY
         }
+    }
+
+    /**
+     * Upgrade the old Phone=15 cache value to Phone=21 and force one delta send.
+     * The DataStore value may remain 15 until the next explicit save, but
+     * MicSourceConfig.fromCommandCode keeps that legacy value readable.
+     */
+    private fun migrateLegacyPhoneMicSourceSync() {
+        val code = syncCache.getInt(SYNC_CACHE_KEY_MIC_SOURCE, MicSourceConfig.DEFAULT.commandCode)
+        if (!MicSourceConfig.needsPhoneCommandMigration(code)) return
+
+        val pending = getPendingChangesSync() + ConfigKey.MIC_SOURCE
+        syncCache.edit()
+            .putInt(SYNC_CACHE_KEY_MIC_SOURCE, MicSourceConfig.PHONE.commandCode)
+            .putStringSet(SYNC_CACHE_KEY_PENDING_CHANGES, pending)
+            .apply()
+        logInfo(
+            "Migrated legacy Phone mic command 15 to 21; queued MIC_SOURCE update",
+            tag = "AdapterConfig",
+        )
     }
 
     /**

@@ -13,6 +13,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.view.KeyEvent
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -44,21 +45,28 @@ import com.carlink.logging.LogPreset
 import com.carlink.logging.Logger
 import com.carlink.logging.LoggingPreferences
 import com.carlink.logging.apply
-import com.carlink.logging.logWarn
 import com.carlink.logging.logInfo
 import com.carlink.logging.logWarn
 import com.carlink.media.MediaSessionManager
 import com.carlink.util.LogCallback
+import com.carlink.util.LogcatKeyEventMonitor
+import com.carlink.util.LogcatMonitorStatus
 import com.carlink.util.WindowMetricsCompat
 import com.carlink.navigation.NavigationStateManager
 import com.carlink.protocol.AdapterConfig
 import com.carlink.protocol.KnownDevices
+import com.carlink.protocol.InputKeyAction
 import com.carlink.ui.MainScreen
 import com.carlink.ui.SettingsScreen
 import com.carlink.ui.settings.AdapterConfigPreference
 import com.carlink.ui.settings.DisplayMode
 import com.carlink.ui.settings.DisplayModePreference
+import com.carlink.ui.settings.LogcatKeyMapping
+import com.carlink.ui.settings.LogcatKeyMappingPreference
+import com.carlink.ui.settings.LogcatTriggerMode
+import com.carlink.ui.settings.InputKeyMappingPreference
 import com.carlink.ui.theme.CarlinkTheme
+import com.carlink.util.CustomHomeIconStore
 import com.carlink.util.IconAssets
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -138,6 +146,18 @@ class MainActivity : ComponentActivity() {
     private val carlinkManagerState = mutableStateOf<CarlinkManager?>(null)
     private val displayModeState = mutableStateOf(DisplayMode.SYSTEM_UI_VISIBLE)
 
+    private val inputKeyMappingsState = mutableStateOf<Map<Int, InputKeyAction>>(emptyMap())
+    private val inputKeyCaptureState = mutableStateOf<InputKeyAction?>(null)
+    private var inputKeyCaptureAction: InputKeyAction? = null
+    private var suppressCapturedKeyUp: Int? = null
+    private val inputKeyMappingPreference by lazy { InputKeyMappingPreference.getInstance(this) }
+
+    private val logcatMappingsState = mutableStateOf<List<LogcatKeyMapping>>(emptyList())
+    private val logcatMonitorStatusState = mutableStateOf(LogcatMonitorStatus.STOPPED)
+    private val logcatReadLogsGrantedState = mutableStateOf(false)
+    private val logcatKeyMappingPreference by lazy { LogcatKeyMappingPreference.getInstance(this) }
+    private var logcatMonitor: LogcatKeyEventMonitor? = null
+
     // Pending reinit handler — tracked for cancellation on rapid display mode changes
     private var pendingReinitRunnable: Runnable? = null
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -206,6 +226,11 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        inputKeyMappingsState.value = inputKeyMappingPreference.mappings.value
+        logcatMappingsState.value = logcatKeyMappingPreference.mappings.value
+        logcatReadLogsGrantedState.value =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_LOGS) == PackageManager.PERMISSION_GRANTED
+
         // Enable edge-to-edge display
         enableEdgeToEdge()
 
@@ -214,6 +239,7 @@ class MainActivity : ComponentActivity() {
 
         // Initialize logging
         initializeLogging()
+        initializeLogcatMonitor()
 
         // Apply cluster service component state before Templates Host discovers it
         AdapterConfigPreference.getInstance(this).applyClusterComponentState(this)
@@ -279,6 +305,17 @@ class MainActivity : ComponentActivity() {
                             // into a deterministic one: new SurfaceView, fresh HWC plane,
                             // fresh WindowMetrics, renegotiated Open() — every time.
                             onResetConnection = { reinitializeForDisplayMode(currentDisplayMode) },
+                            inputKeyMappings = inputKeyMappingsState.value,
+                            inputKeyCaptureAction = inputKeyCaptureState.value,
+                            onStartInputKeyCapture = ::startInputKeyCapture,
+                            onCaptureInputKey = ::captureInputKey,
+                            onCancelInputKeyCapture = ::cancelInputKeyCapture,
+                            onRemoveInputKeyMapping = ::removeInputKeyMapping,
+                            logcatMappings = logcatMappingsState.value,
+                            logcatMonitorStatus = logcatMonitorStatusState.value,
+                            logcatReadLogsGranted = logcatReadLogsGrantedState.value,
+                            onAddLogcatMapping = ::addLogcatMapping,
+                            onRemoveLogcatMapping = ::removeLogcatMapping,
                         )
                     }
                 }
@@ -288,9 +325,157 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        logcatReadLogsGrantedState.value =
+            ContextCompat.checkSelfPermission(this, Manifest.permission.READ_LOGS) == PackageManager.PERMISSION_GRANTED
         // Restore display mode when returning to app
         // System may have shown bars while app was in background
         applyDisplayMode(currentDisplayMode)
+    }
+
+    /**
+     * Receives hardware/ADB key events before Compose views. A key is consumed only
+     * when it is being captured or has an explicit user mapping, so normal Android
+     * navigation and keyboard input retain their platform behavior.
+     */
+    @Suppress("RestrictedApi")
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_UP && suppressCapturedKeyUp == event.keyCode) {
+            suppressCapturedKeyUp = null
+            return true
+        }
+        inputKeyCaptureAction?.let { action ->
+            if (event.action == KeyEvent.ACTION_DOWN && event.repeatCount == 0 && event.keyCode != KeyEvent.KEYCODE_UNKNOWN) {
+                captureInputKey(event.keyCode)
+                suppressCapturedKeyUp = event.keyCode
+                return true
+            }
+            // Do not allow the key-up from a capture gesture to leak into the UI.
+            if (event.action == KeyEvent.ACTION_UP) return true
+        }
+
+        val action = inputKeyMappingsState.value[event.keyCode]
+        if (action != null) {
+            when (event.action) {
+                KeyEvent.ACTION_DOWN -> {
+                    if (event.repeatCount == 0) carlinkManager?.sendInputKeyAction(action)
+                    return true
+                }
+                KeyEvent.ACTION_UP -> {
+                    if (action.releaseCommand != null) carlinkManager?.sendInputKeyAction(action, released = true)
+                    return true
+                }
+                else -> return true
+            }
+        }
+        return super.dispatchKeyEvent(event)
+    }
+
+    private fun startInputKeyCapture(action: InputKeyAction) {
+        inputKeyCaptureAction = action
+        inputKeyCaptureState.value = action
+        logInfo("[INPUT_KEY] waiting for key to map to ${action.name}", tag = "UI")
+    }
+
+    private fun captureInputKey(keyCode: Int) {
+        val action = inputKeyCaptureAction ?: return
+        if (keyCode == KeyEvent.KEYCODE_UNKNOWN) return
+        inputKeyMappingPreference.setMapping(keyCode, action)
+        inputKeyMappingsState.value = inputKeyMappingPreference.mappings.value
+        inputKeyCaptureAction = null
+        inputKeyCaptureState.value = null
+        logInfo(
+            "[INPUT_KEY] captured ${KeyEvent.keyCodeToString(keyCode)} -> ${action.name}",
+            tag = "UI",
+        )
+    }
+
+    private fun cancelInputKeyCapture() {
+        inputKeyCaptureAction = null
+        inputKeyCaptureState.value = null
+    }
+
+    private fun removeInputKeyMapping(action: InputKeyAction) {
+        inputKeyMappingPreference.removeMapping(action)
+        inputKeyMappingsState.value = inputKeyMappingPreference.mappings.value
+    }
+
+    private fun initializeLogcatMonitor() {
+        if (logcatMonitor == null) {
+            logcatMonitor =
+                LogcatKeyEventMonitor(
+                    rulesProvider = { logcatKeyMappingPreference.mappings.value },
+                    onMatch = { rule ->
+                        mainHandler.post {
+                            if (!isDestroyed && !isFinishing) handleLogcatMapping(rule)
+                        }
+                    },
+                    onStatusChanged = { status ->
+                        mainHandler.post {
+                            if (!isDestroyed) logcatMonitorStatusState.value = status
+                        }
+                    },
+                )
+        }
+        syncLogcatMonitor()
+    }
+
+    private fun syncLogcatMonitor() {
+        val mappings = logcatKeyMappingPreference.mappings.value
+        logcatMappingsState.value = mappings
+        if (mappings.isEmpty()) {
+            logcatMonitor?.stop()
+        } else {
+            logcatMonitor?.start()
+        }
+    }
+
+    private fun addLogcatMapping(
+        pattern: String,
+        action: InputKeyAction,
+        mode: LogcatTriggerMode,
+    ) {
+        runCatching { logcatKeyMappingPreference.addMapping(pattern, action, mode) }
+            .onSuccess { mapping ->
+                logInfo(
+                    "[LOGCAT_TRIGGER] mapping saved action=${mapping.action.name} mode=${mapping.mode.name}",
+                    tag = "INPUT_KEY",
+                )
+                syncLogcatMonitor()
+            }
+            .onFailure { error ->
+                logWarn(
+                    "[LOGCAT_MONITOR_INTERNAL] invalid mapping: ${error.javaClass.simpleName}",
+                    tag = "INPUT_KEY",
+                )
+            }
+    }
+
+    private fun removeLogcatMapping(id: String) {
+        logcatKeyMappingPreference.removeMapping(id)
+        syncLogcatMonitor()
+    }
+
+    private fun handleLogcatMapping(rule: LogcatKeyMapping) {
+        logInfo(
+            "[LOGCAT_TRIGGER] action=${rule.action.name} mode=${rule.mode.name}",
+            tag = "INPUT_KEY",
+        )
+        if (rule.mode != LogcatTriggerMode.CARPLAY_ONLY) return
+
+        val manager = carlinkManager ?: return
+        val sent = manager.sendInputKeyAction(rule.action)
+        if (sent && rule.action == InputKeyAction.SIRI) {
+            // logcat normally exposes only the down event. Release Siri shortly after
+            // so the adapter does not remain in a pressed state.
+            mainHandler.postDelayed(
+                {
+                    if (!isDestroyed && !isFinishing && carlinkManager === manager) {
+                        manager.sendInputKeyAction(rule.action, released = true)
+                    }
+                },
+                SIRI_LOGCAT_RELEASE_DELAY_MS,
+            )
+        }
     }
 
     override fun onStart() {
@@ -339,6 +524,9 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() {
         super.onDestroy()
 
+        logcatMonitor?.stop()
+        logcatMonitor = null
+
         // Unregister USB detachment receiver
         unregisterUsbDetachReceiver()
 
@@ -351,6 +539,10 @@ class MainActivity : ComponentActivity() {
         fileLogManager?.release()
 
         logInfo("MainActivity destroyed", tag = "MAIN")
+    }
+
+    companion object {
+        private const val SIRI_LOGCAT_RELEASE_DELAY_MS = 650L
     }
 
     private fun initializeLogging() {
@@ -468,8 +660,9 @@ class MainActivity : ComponentActivity() {
         val evenWidth = videoWidth and 1.inv()
         val evenHeight = videoHeight and 1.inv()
 
-        // Load icons from assets for adapter initialization
-        val (icon120, icon180, icon256) = IconAssets.loadIcons(this)
+        // Load the persisted custom home icon, falling back to bundled assets.
+        val customHomeIcon = CustomHomeIconStore.loadBytes(this)
+        val (icon120, icon180, icon256) = IconAssets.loadIcons(this, customHomeIcon)
         val iconsLoaded = icon120 != null && icon180 != null && icon256 != null
 
         // Load bundled aa_gps_fix.sh — pushed to adapter /tmp on every init (full + minimal).
@@ -492,15 +685,10 @@ class MainActivity : ComponentActivity() {
                 null
             }
 
-        // Platform-specific overrides. PlatformDetector.detect is cheap (Build props + one
-        // MediaCodecList scan); CarlinkManager.initialize re-detects but that's idempotent.
-        // gminfo37 (and the AAOS emulator for development parity): hide the CarPlay OEM
-        // "Exit" icon — GM AAOS has its own back-nav; the OEM tile collides visually.
-        // Other platforms keep the OEM icon visible (existing factory behavior). Wired into
-        // /etc/airplay.conf via AdapterConfig.oemIconVisible which generateAirplayConfig now
-        // honors.
-        val platformInfo = com.carlink.platform.PlatformDetector.detect(this)
-        val oemIconVisibleForPlatform = !platformInfo.requiresImmersiveDefaults()
+        // The configured image is the user's CarPlay home tile. Keep the OEM icon visible on
+        // every platform so a custom/bundled icon is not silently hidden on GM AAOS devices.
+        // The adapter's AirPlay configuration still controls the tile label and path.
+        val oemIconVisibleForPlatform = true
 
         // Load user-configured adapter settings from sync cache (instant, no I/O blocking)
         // These are optional - only configured settings are sent to the adapter
@@ -545,7 +733,7 @@ class MainActivity : ComponentActivity() {
         val micType =
             when (userConfig.micSource) {
                 com.carlink.ui.settings.MicSourceConfig.APP -> "os"
-                com.carlink.ui.settings.MicSourceConfig.PHONE -> "box"
+                com.carlink.ui.settings.MicSourceConfig.PHONE -> "phone"
             }
         val wifiType =
             when (userConfig.wifiBand) {
@@ -1045,6 +1233,17 @@ fun CarlinkApp(
     onResetCluster: () -> Unit,
     onReinitForDisplayMode: (DisplayMode) -> Unit = {},
     onResetConnection: () -> Unit = {},
+    inputKeyMappings: Map<Int, InputKeyAction> = emptyMap(),
+    inputKeyCaptureAction: InputKeyAction? = null,
+    onStartInputKeyCapture: (InputKeyAction) -> Unit = {},
+    onCaptureInputKey: (Int) -> Unit = {},
+    onCancelInputKeyCapture: () -> Unit = {},
+    onRemoveInputKeyMapping: (InputKeyAction) -> Unit = {},
+    logcatMappings: List<LogcatKeyMapping> = emptyList(),
+    logcatMonitorStatus: LogcatMonitorStatus = LogcatMonitorStatus.STOPPED,
+    logcatReadLogsGranted: Boolean = false,
+    onAddLogcatMapping: (String, InputKeyAction, LogcatTriggerMode) -> Unit = { _, _, _ -> },
+    onRemoveLogcatMapping: (String) -> Unit = {},
 ) {
     // Survives normal recomposition via remember{}, but discarded on manager rebuild
     // because CarlinkApp itself is gated by `if (manager != null)` at the Activity
@@ -1099,6 +1298,17 @@ fun CarlinkApp(
                 },
                 onResetCluster = onResetCluster,
                 onReinitForDisplayMode = onReinitForDisplayMode,
+                inputKeyMappings = inputKeyMappings,
+                inputKeyCaptureAction = inputKeyCaptureAction,
+                onStartInputKeyCapture = onStartInputKeyCapture,
+                onCaptureInputKey = onCaptureInputKey,
+                onCancelInputKeyCapture = onCancelInputKeyCapture,
+                onRemoveInputKeyMapping = onRemoveInputKeyMapping,
+                logcatMappings = logcatMappings,
+                logcatMonitorStatus = logcatMonitorStatus,
+                logcatReadLogsGranted = logcatReadLogsGranted,
+                onAddLogcatMapping = onAddLogcatMapping,
+                onRemoveLogcatMapping = onRemoveLogcatMapping,
             )
         }
     }

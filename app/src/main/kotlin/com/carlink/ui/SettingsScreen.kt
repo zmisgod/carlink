@@ -78,6 +78,7 @@ import com.carlink.CarlinkManager
 import com.carlink.logging.FileLogManager
 import com.carlink.logging.logInfo
 import com.carlink.logging.logWarn
+import com.carlink.protocol.InputKeyAction
 import com.carlink.ui.components.LoadingSpinner
 import com.carlink.ui.settings.AdapterConfigPreference
 import com.carlink.ui.settings.AdapterConfigurationDialog
@@ -85,9 +86,12 @@ import com.carlink.ui.settings.DisplayMode
 import com.carlink.ui.settings.DisplayModeDialog
 import com.carlink.ui.settings.DisplayModePreference
 import com.carlink.ui.settings.LogsTabContent
+import com.carlink.ui.settings.LogcatKeyMapping
+import com.carlink.ui.settings.LogcatTriggerMode
 import com.carlink.ui.settings.PhonesTabContent
 import com.carlink.ui.settings.SettingsTab
 import com.carlink.ui.theme.AutomotiveDimens
+import com.carlink.util.LogcatMonitorStatus
 import kotlinx.coroutines.launch
 
 /** Settings screen with NavigationRail for device control, display settings, and log management. */
@@ -98,6 +102,17 @@ fun SettingsScreen(
     onNavigateBack: () -> Unit,
     onResetCluster: () -> Unit,
     onReinitForDisplayMode: (DisplayMode) -> Unit = {},
+    inputKeyMappings: Map<Int, InputKeyAction> = emptyMap(),
+    inputKeyCaptureAction: InputKeyAction? = null,
+    onStartInputKeyCapture: (InputKeyAction) -> Unit = {},
+    onCaptureInputKey: (Int) -> Unit = {},
+    onCancelInputKeyCapture: () -> Unit = {},
+    onRemoveInputKeyMapping: (InputKeyAction) -> Unit = {},
+    logcatMappings: List<LogcatKeyMapping> = emptyList(),
+    logcatMonitorStatus: LogcatMonitorStatus = LogcatMonitorStatus.STOPPED,
+    logcatReadLogsGranted: Boolean = false,
+    onAddLogcatMapping: (String, InputKeyAction, LogcatTriggerMode) -> Unit = { _, _, _ -> },
+    onRemoveLogcatMapping: (String) -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(SettingsTab.PHONES) }
     val context = LocalContext.current
@@ -278,7 +293,23 @@ fun SettingsScreen(
                         .weight(1f),
             ) {
                 when (selectedTab) {
-                    SettingsTab.CONTROL -> ControlTabContent(carlinkManager, onResetCluster, onReinitForDisplayMode)
+                    SettingsTab.CONTROL ->
+                        ControlTabContent(
+                            carlinkManager,
+                            onResetCluster,
+                            onReinitForDisplayMode,
+                            inputKeyMappings,
+                            inputKeyCaptureAction,
+                            onStartInputKeyCapture,
+                            onCaptureInputKey,
+                            onCancelInputKeyCapture,
+                            onRemoveInputKeyMapping,
+                            logcatMappings,
+                            logcatMonitorStatus,
+                            logcatReadLogsGranted,
+                            onAddLogcatMapping,
+                            onRemoveLogcatMapping,
+                        )
                     SettingsTab.PHONES -> PhonesTabContent(carlinkManager)
                     SettingsTab.LOGS -> LogsTabContent(context, fileLogManager)
                 }
@@ -317,6 +348,17 @@ private fun ControlTabContent(
     carlinkManager: CarlinkManager,
     onResetCluster: () -> Unit,
     onReinitForDisplayMode: (DisplayMode) -> Unit = {},
+    inputKeyMappings: Map<Int, InputKeyAction> = emptyMap(),
+    inputKeyCaptureAction: InputKeyAction? = null,
+    onStartInputKeyCapture: (InputKeyAction) -> Unit = {},
+    onCaptureInputKey: (Int) -> Unit = {},
+    onCancelInputKeyCapture: () -> Unit = {},
+    onRemoveInputKeyMapping: (InputKeyAction) -> Unit = {},
+    logcatMappings: List<LogcatKeyMapping> = emptyList(),
+    logcatMonitorStatus: LogcatMonitorStatus = LogcatMonitorStatus.STOPPED,
+    logcatReadLogsGranted: Boolean = false,
+    onAddLogcatMapping: (String, InputKeyAction, LogcatTriggerMode) -> Unit = { _, _, _ -> },
+    onRemoveLogcatMapping: (String) -> Unit = {},
 ) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -594,11 +636,26 @@ private fun ControlTabContent(
             adapterConfigPreference = adapterConfigPreference,
             carlinkManager = carlinkManager,
             currentDisplayMode = currentDisplayMode,
-            onDismiss = { showAdapterConfigDialog = false },
+            onDismiss = {
+                onCancelInputKeyCapture()
+                showAdapterConfigDialog = false
+            },
             onReinitAdapter = {
+                onCancelInputKeyCapture()
                 showAdapterConfigDialog = false
                 onReinitForDisplayMode(currentDisplayMode)
             },
+            inputKeyMappings = inputKeyMappings,
+            inputKeyCaptureAction = inputKeyCaptureAction,
+            onStartInputKeyCapture = onStartInputKeyCapture,
+            onCaptureInputKey = onCaptureInputKey,
+            onCancelInputKeyCapture = onCancelInputKeyCapture,
+            onRemoveInputKeyMapping = onRemoveInputKeyMapping,
+            logcatMappings = logcatMappings,
+            logcatMonitorStatus = logcatMonitorStatus,
+            logcatReadLogsGranted = logcatReadLogsGranted,
+            onAddLogcatMapping = onAddLogcatMapping,
+            onRemoveLogcatMapping = onRemoveLogcatMapping,
         )
     }
 

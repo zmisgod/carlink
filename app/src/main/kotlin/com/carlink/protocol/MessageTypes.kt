@@ -213,6 +213,25 @@ enum class CommandMapping(
 }
 
 /**
+ * Actions that can be assigned to an external Android [android.view.KeyEvent].
+ *
+ * NEXT and PREVIOUS have a media command plus a call command. CarlinkManager
+ * selects PhoneAnswer while an incoming call is ringing, and PhoneHungUp while
+ * a call is ringing or active; otherwise the media command is sent.
+ */
+enum class InputKeyAction(
+    val label: String,
+    val command: CommandMapping,
+    val callCommand: CommandMapping? = null,
+    val releaseCommand: CommandMapping? = null,
+) {
+    NEXT("Next track / answer call", CommandMapping.NEXT, CommandMapping.PHONE_ANSWER),
+    PREVIOUS("Previous track / hang up", CommandMapping.PREV, CommandMapping.PHONE_HANG_UP),
+    PAUSE("Play / pause", CommandMapping.PLAY_PAUSE),
+    SIRI("Siri", CommandMapping.SIRI, releaseCommand = CommandMapping.SIRI_BUTTON_UP),
+}
+
+/**
  * Message type identifiers for CPC200-CCPA protocol.
  *
  * Reference: documents/reference/firmware/RE_Documention/02_Protocol_Reference/usb_protocol.md

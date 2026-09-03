@@ -641,6 +641,7 @@ object MessageSerializer {
         const val MEDIA_DELAY = "media_delay"
         const val HAND_DRIVE = "hand_drive_mode"
         const val GPS_FORWARDING = "gps_forwarding"
+        const val CUSTOM_HOME_ICON = "custom_home_icon"
     }
 
     /**
@@ -724,7 +725,11 @@ object MessageSerializer {
 
         when (initMode) {
             "MINIMAL_ONLY" -> {
-                // Just minimal - adapter retains all other settings
+                // The adapter retains most settings, but icon files are deliberately sent on
+                // every connection. This makes a bundled icon replacement (or a custom icon
+                // selected in Settings) take effect even when the adapter selects MINIMAL_ONLY
+                // and the app version has not changed since the previous connection.
+                addIconSettings(messages, config)
                 // WiFi Enable sent last to activate wireless mode after config
                 messages.add(serializeCommand(CommandMapping.WIFI_ENABLE))
                 return messages
@@ -733,6 +738,8 @@ object MessageSerializer {
             "MINIMAL_PLUS_CHANGES" -> {
                 // Add only the changed settings
                 addChangedSettings(messages, config, pendingChanges, surfaceWidth, surfaceHeight)
+                // Keep the icon and AirPlay path fresh after any changed BoxSettings write.
+                addIconSettings(messages, config)
                 // WiFi Enable sent last to activate wireless mode after config
                 messages.add(serializeCommand(CommandMapping.WIFI_ENABLE))
                 return messages
@@ -781,13 +788,7 @@ object MessageSerializer {
                 }
 
                 ConfigKey.MIC_SOURCE -> {
-                    val command =
-                        if (config.micType == "box") {
-                            CommandMapping.BOX_MIC
-                        } else {
-                            CommandMapping.MIC
-                        }
-                    messages.add(serializeCommand(command))
+                    messages.add(serializeCommand(microphoneCommand(config.micType)))
                 }
 
                 ConfigKey.WIFI_BAND -> {
@@ -812,11 +813,36 @@ object MessageSerializer {
                 ConfigKey.HAND_DRIVE -> {
                     messages.add(serializeNumber(config.handDriveMode, FileAddress.HAND_DRIVE_MODE))
                 }
+
+                ConfigKey.CUSTOM_HOME_ICON -> {
+                    // Icon files are sent for every non-FULL initialization below. Keeping this
+                    // key recognized preserves pending-change compatibility without duplicating
+                    // the four file writes when MINIMAL_PLUS_CHANGES is selected.
+                }
             }
         }
         if (needsBoxSettingsResend) {
             messages.add(serializeBoxSettings(config, surfaceWidth = surfaceWidth, surfaceHeight = surfaceHeight))
         }
+    }
+
+    /**
+     * Send the complete CarPlay home icon set and its AirPlay configuration together.
+     *
+     * Some adapters retain the previous files through a MINIMAL_ONLY reconnect, and some
+     * head units cache the icon until the path/config is rewritten. Sending all sizes plus
+     * the configured OEM path after any BoxSettings delta keeps the adapter and CarPlay
+     * home tile synchronized without requiring an app version bump.
+     */
+    private fun addIconSettings(
+        messages: MutableList<ByteArray>,
+        config: AdapterConfig,
+    ) {
+        config.icon120Data?.let { messages.add(serializeFile(FileAddress.ICON_120.path, it)) }
+        config.icon180Data?.let { messages.add(serializeFile(FileAddress.ICON_180.path, it)) }
+        config.icon256Data?.let { messages.add(serializeFile(FileAddress.ICON_256.path, it)) }
+        config.icon256Data?.let { messages.add(serializeFile(FileAddress.OEM_ICON.path, it)) }
+        messages.add(serializeString(generateAirplayConfig(config), FileAddress.AIRPLAY_CONFIG))
     }
 
     /**
@@ -841,6 +867,9 @@ object MessageSerializer {
         config.icon120Data?.let { messages.add(serializeFile(FileAddress.ICON_120.path, it)) }
         config.icon180Data?.let { messages.add(serializeFile(FileAddress.ICON_180.path, it)) }
         config.icon256Data?.let { messages.add(serializeFile(FileAddress.ICON_256.path, it)) }
+        // Keep the AirPlay home tile in sync with the icon set. The firmware
+        // reads this exact path from airplay.conf's oemIconPath setting.
+        config.icon256Data?.let { messages.add(serializeFile(FileAddress.OEM_ICON.path, it)) }
 
         // WiFi band selection
         val wifiCommand = if (config.wifiType == "5ghz") CommandMapping.WIFI_5G else CommandMapping.WIFI_24G
@@ -872,8 +901,7 @@ object MessageSerializer {
         messages.add(serializeString(generateAirplayConfig(config), FileAddress.AIRPLAY_CONFIG))
 
         // Microphone source
-        val micCommand = if (config.micType == "box") CommandMapping.BOX_MIC else CommandMapping.MIC
-        messages.add(serializeCommand(micCommand))
+        messages.add(serializeCommand(microphoneCommand(config.micType)))
 
         // Audio transfer mode
         val audioTransferCommand =
@@ -891,4 +919,12 @@ object MessageSerializer {
         // (including opt-out). A second write on the FULL path (historical carry-over from
         // pre-split refactor) was redundant and was removed.
     }
+
+    /** Map host mic-source names to the adapter's protocol commands. */
+    private fun microphoneCommand(micType: String): CommandMapping =
+        when (micType) {
+            "phone" -> CommandMapping.USE_PHONE_MIC
+            "box" -> CommandMapping.BOX_MIC
+            else -> CommandMapping.MIC
+        }
 }

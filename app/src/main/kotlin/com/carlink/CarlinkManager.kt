@@ -29,6 +29,7 @@ import com.carlink.protocol.BoxSettingsMessage
 import com.carlink.protocol.CommandMapping
 import com.carlink.protocol.CommandMessage
 import com.carlink.protocol.InfoMessage
+import com.carlink.protocol.InputKeyAction
 import com.carlink.protocol.MediaDataMessage
 import com.carlink.protocol.MediaType
 import com.carlink.protocol.Message
@@ -410,6 +411,7 @@ class CarlinkManager(
 
     // Audio routing state flags for two-factor PCM routing (replaces currentStreamPurpose)
     @Volatile private var isSiriAudioActive = false
+    @Volatile private var isIncomingCallActive = false
     @Volatile private var isPhoneCallAudioActive = false
     @Volatile private var isAlertAudioActive = false
 
@@ -971,7 +973,7 @@ class CarlinkManager(
                 micType =
                     when (userConfig.micSource) {
                         MicSourceConfig.APP -> "os"
-                        MicSourceConfig.PHONE -> "box"
+                        MicSourceConfig.PHONE -> "phone"
                     },
                 wifiType =
                     when (userConfig.wifiBand) {
@@ -1065,6 +1067,7 @@ class CarlinkManager(
         clearCachedMediaMetadata() // Clear stale metadata to prevent race conditions on reconnect
         activeVoiceMode = VoiceMode.NONE // Reset voice mode on disconnect
         isSiriAudioActive = false
+        isIncomingCallActive = false
         isPhoneCallAudioActive = false
         isAlertAudioActive = false // Reset purpose on disconnect
         stopMicrophoneCapture()
@@ -1196,6 +1199,39 @@ class CarlinkManager(
      */
     private fun sendKey(command: CommandMapping): Boolean = adapterDriver?.sendCommand(command) ?: false
 
+    /**
+     * Forward an externally received key mapping to the adapter.
+     *
+     * Siri is a press/release protocol pair. NEXT selects PhoneAnswer while a call
+     * is ringing; PREV selects PhoneHungUp while a call is ringing or active.
+     * Otherwise both retain their media behavior.
+     * Media and call actions are one-shot commands and are only emitted on key down
+     * by MainActivity.
+     */
+    fun sendInputKeyAction(
+        action: InputKeyAction,
+        released: Boolean = false,
+    ): Boolean {
+        val command =
+            if (released) {
+                action.releaseCommand
+            } else if (
+                (action == InputKeyAction.NEXT && isIncomingCallActive) ||
+                    (action == InputKeyAction.PREVIOUS && (isIncomingCallActive || isPhoneCallAudioActive))
+            ) {
+                action.callCommand ?: action.command
+            } else {
+                action.command
+            }
+        return command?.let {
+            logInfo(
+                "[INPUT_KEY] action=${action.name} command=${it.name} released=$released",
+                tag = Logger.Tags.ADAPTR,
+            )
+            sendKey(it)
+        } ?: false
+    }
+
     // AA MOVE rate-limit timestamp. carlink_native skips a MOVE send when <17ms
     // elapsed since the previous one. See [AA_TOUCH_THROTTLE_NS] for the full
     // explanation — and the important distinction from AutoKit's use of the same
@@ -1290,6 +1326,7 @@ class CarlinkManager(
         callback?.onPhoneTypeChanged(PhoneType.UNKNOWN)
         activeVoiceMode = VoiceMode.NONE
         isSiriAudioActive = false
+        isIncomingCallActive = false
         isPhoneCallAudioActive = false
         isAlertAudioActive = false
         clearCachedMediaMetadata()
@@ -2293,21 +2330,34 @@ class CarlinkManager(
             }
 
             AudioCommand.AUDIO_SIRI_START -> {
-                logInfo("[AUDIO_CMD] Siri started - enabling microphone (mode: SIRI)", tag = Logger.Tags.MIC)
+                logInfo(
+                    "[AUDIO_CMD] Siri started - ${if (hostProvidesMicrophone()) "enabling microphone" else "adapter/phone microphone selected"} (mode: SIRI)",
+                    tag = Logger.Tags.MIC,
+                )
                 activeVoiceMode = VoiceMode.SIRI
+                isIncomingCallActive = false
                 isSiriAudioActive = true
                 setPurpose(StreamPurpose.SIRI, command)
-                startMicrophoneCapture(decodeType = 5, audioType = 3)
+                if (hostProvidesMicrophone()) {
+                    startMicrophoneCapture(decodeType = 5, audioType = 3)
+                }
             }
 
             AudioCommand.AUDIO_PHONECALL_START -> {
                 val micDecodeType = lastIncomingDecodeType
-                logInfo("[AUDIO_CMD] Phone call started - enabling microphone (mode: PHONECALL, decodeType=$micDecodeType)", tag = Logger.Tags.MIC)
+                logInfo(
+                    "[AUDIO_CMD] Phone call started - ${if (hostProvidesMicrophone()) "enabling microphone" else "adapter/phone microphone selected"} " +
+                        "(mode: PHONECALL, decodeType=$micDecodeType)",
+                    tag = Logger.Tags.MIC,
+                )
                 activeVoiceMode = VoiceMode.PHONECALL
+                isIncomingCallActive = false
                 isPhoneCallAudioActive = true
                 endPurpose(StreamPurpose.RINGTONE, command) // Call answered — ringtone is over
                 setPurpose(StreamPurpose.PHONE_CALL, command)
-                startMicrophoneCapture(decodeType = micDecodeType, audioType = 3)
+                if (hostProvidesMicrophone()) {
+                    startMicrophoneCapture(decodeType = micDecodeType, audioType = 3)
+                }
             }
 
             AudioCommand.AUDIO_SIRI_STOP -> {
@@ -2343,6 +2393,7 @@ class CarlinkManager(
             AudioCommand.AUDIO_PHONECALL_STOP -> {
                 logInfo("[AUDIO_CMD] Phone call stopped - disabling microphone", tag = Logger.Tags.MIC)
                 activeVoiceMode = VoiceMode.NONE
+                isIncomingCallActive = false
                 isPhoneCallAudioActive = false
                 // Pause the phone-call AudioTrack BEFORE abandoning focus so AAOS
                 // sees no active USAGE_VOICE_COMMUNICATION player. Without this,
@@ -2355,6 +2406,7 @@ class CarlinkManager(
 
             AudioCommand.AUDIO_MEDIA_START -> {
                 logDebug("[AUDIO_CMD] Media audio START command received", tag = Logger.Tags.AUDIO)
+                isIncomingCallActive = false
                 // Adapter signals media resuming — clear any residual adapter ducking from
                 // a previous voice session (Siri/phone call). The adapter does not send an
                 // explicit volume=1.0 restore packet; MEDIA_START is the session boundary.
@@ -2377,6 +2429,7 @@ class CarlinkManager(
             AudioCommand.AUDIO_ALERT_STOP -> {
                 logDebug("[AUDIO_CMD] Alert stopped", tag = Logger.Tags.AUDIO)
                 isAlertAudioActive = false
+                isIncomingCallActive = false
                 endPurpose(StreamPurpose.ALERT, command)
                 endPurpose(StreamPurpose.RINGTONE, command) // Call declined/missed — ringtone is over
             }
@@ -2396,6 +2449,7 @@ class CarlinkManager(
                 // but was never abandoned (no INCOMING_CALL_STOP exists in the protocol), causing
                 // permanent media silence after phone calls.
                 logInfo("[AUDIO_CMD] Incoming call ring (AudioCmd 14)", tag = Logger.Tags.AUDIO)
+                isIncomingCallActive = true
             }
 
             AudioCommand.AUDIO_INPUT_CONFIG -> {
@@ -2512,6 +2566,9 @@ class CarlinkManager(
             )
         }
     }
+
+    /** Whether this host should capture and send voice PCM to the adapter. */
+    private fun hostProvidesMicrophone(): Boolean = config.micType == "os"
 
     // DEBUG helper: emit a possibly-long iAP2 hex string across multiple log lines so the
     // full payload survives logcat's per-line ~4000 char cap. Single short strings fit in
@@ -2820,6 +2877,7 @@ class CarlinkManager(
         clearCachedMediaMetadata()
         activeVoiceMode = VoiceMode.NONE
         isSiriAudioActive = false
+        isIncomingCallActive = false
         isPhoneCallAudioActive = false
         isAlertAudioActive = false
         stopMicrophoneCapture()

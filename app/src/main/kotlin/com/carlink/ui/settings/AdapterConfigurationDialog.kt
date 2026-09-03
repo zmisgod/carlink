@@ -1,13 +1,18 @@
 package com.carlink.ui.settings
 
+import android.graphics.BitmapFactory
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -17,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -24,8 +30,11 @@ import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.AspectRatio
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.DirectionsCar
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Hd
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Mic
@@ -38,20 +47,27 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.compose.material.icons.filled.SignalCellularAlt
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Usb
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,8 +78,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -75,11 +94,15 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.carlink.CarlinkManager
 import com.carlink.logging.logInfo
 import com.carlink.logging.logWarn
+import com.carlink.protocol.InputKeyAction
 import com.carlink.ui.theme.AutomotiveDimens
+import com.carlink.util.CustomHomeIconStore
+import com.carlink.util.LogcatMonitorStatus
 import com.carlink.util.WindowMetricsCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * Adapter Configuration Dialog
@@ -90,7 +113,7 @@ import kotlinx.coroutines.launch
  * Structure:
  * - Header with icon and title
  * - Subtitle ("Changes require app restart…" — see HAZARD note at that string)
- * - SecondaryTabRow with Audio / Visual / Misc tabs (ephemeral state via remember)
+ * - SecondaryTabRow with Audio / Visual / Keys / Misc tabs (ephemeral state via remember)
  * - Scrollable content area whose body switches on the selected tab
  * - Footer with Cancel / Default / Apply buttons (tiered restart strategy at Apply)
  *
@@ -110,6 +133,17 @@ fun AdapterConfigurationDialog(
     currentDisplayMode: DisplayMode,
     onDismiss: () -> Unit,
     onReinitAdapter: () -> Unit = {},
+    inputKeyMappings: Map<Int, InputKeyAction> = emptyMap(),
+    inputKeyCaptureAction: InputKeyAction? = null,
+    onStartInputKeyCapture: (InputKeyAction) -> Unit = {},
+    onCaptureInputKey: (Int) -> Unit = {},
+    onCancelInputKeyCapture: () -> Unit = {},
+    onRemoveInputKeyMapping: (InputKeyAction) -> Unit = {},
+    logcatMappings: List<LogcatKeyMapping> = emptyList(),
+    logcatMonitorStatus: LogcatMonitorStatus = LogcatMonitorStatus.STOPPED,
+    logcatReadLogsGranted: Boolean = false,
+    onAddLogcatMapping: (String, InputKeyAction, LogcatTriggerMode) -> Unit = { _, _, _ -> },
+    onRemoveLogcatMapping: (String) -> Unit = {},
 ) {
     val colorScheme = MaterialTheme.colorScheme
     val scope = rememberCoroutineScope()
@@ -147,6 +181,27 @@ fun AdapterConfigurationDialog(
     // FULLSCREEN_IMMERSIVE: Use full display bounds (bars are hidden)
     // Other modes: Subtract system bar insets from bounds
     val context = LocalContext.current
+
+    val savedCustomHomeIcon = remember { CustomHomeIconStore.loadBytes(context) }
+    var selectedCustomHomeIcon by remember { mutableStateOf(savedCustomHomeIcon) }
+    val iconPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+            if (uri != null) {
+                scope.launch(Dispatchers.IO) {
+                    val bytes = CustomHomeIconStore.readUri(context, uri)
+                    if (bytes != null) {
+                        withContext(Dispatchers.Main.immediate) {
+                            selectedCustomHomeIcon = bytes
+                        }
+                    }
+                }
+            }
+        }
+    val customIconPreview =
+        remember(selectedCustomHomeIcon) {
+            selectedCustomHomeIcon?.let(::decodeIconPreview)
+        }
+    var captureKeyCode by remember { mutableStateOf<Int?>(null) }
     val activity = context as? ComponentActivity
     val (usableWidth, usableHeight) =
         if (activity != null) {
@@ -248,7 +303,9 @@ fun AdapterConfigurationDialog(
             selectedFps != savedFps ||
             selectedHandDrive != savedHandDrive ||
             selectedGpsForwarding != savedGpsForwarding ||
-            selectedClusterNavigation != savedClusterNavigation
+            selectedClusterNavigation != savedClusterNavigation ||
+            !selectedCustomHomeIcon.sameBytesAs(savedCustomHomeIcon)
+    val customHomeIconChanged = !selectedCustomHomeIcon.sameBytesAs(savedCustomHomeIcon)
 
     // Responsive dialog width - 60% of container width, clamped between 320dp and 600dp
     val windowInfo = LocalWindowInfo.current
@@ -261,7 +318,24 @@ fun AdapterConfigurationDialog(
             shape = MaterialTheme.shapes.extraLarge,
             color = colorScheme.surfaceContainerHigh,
             tonalElevation = 6.dp,
-            modifier = Modifier.widthIn(max = dialogMaxWidth),
+            modifier =
+                Modifier
+                    .widthIn(max = dialogMaxWidth)
+                    .onPreviewKeyEvent { event ->
+                        val keyCode = event.nativeKeyEvent.keyCode
+                        if (inputKeyCaptureAction != null &&
+                            event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_DOWN &&
+                            event.nativeKeyEvent.repeatCount == 0
+                        ) {
+                            captureKeyCode = keyCode
+                            onCaptureInputKey(keyCode)
+                            true
+                        } else {
+                            // Consume the release belonging to the capture gesture.
+                            event.nativeKeyEvent.action == android.view.KeyEvent.ACTION_UP &&
+                                captureKeyCode == keyCode
+                        }
+                    },
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
@@ -318,6 +392,11 @@ fun AdapterConfigurationDialog(
                     Tab(
                         selected = selectedTabIndex == 2,
                         onClick = { selectedTabIndex = 2 },
+                        text = { Text("Keys") },
+                    )
+                    Tab(
+                        selected = selectedTabIndex == 3,
+                        onClick = { selectedTabIndex = 3 },
                         text = { Text("Misc") },
                     )
                 }
@@ -408,7 +487,7 @@ fun AdapterConfigurationDialog(
                                     text =
                                         when (selectedMicSource) {
                                             MicSourceConfig.APP -> "This device captures mic input via Android/OS"
-                                            MicSourceConfig.PHONE -> "Phone uses its own mic (or adapter mic if present)"
+                                            MicSourceConfig.PHONE -> "The connected phone captures voice input"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -657,10 +736,77 @@ fun AdapterConfigurationDialog(
                                     color = colorScheme.primary,
                                 )
                             }
+
+                            // CarPlay home icon is uploaded to the adapter as the
+                            // 120/180/256px icon set plus /etc/oem_icon.png during
+                            // the next session reinit.
+                            ConfigurationOptionCard(
+                                title = "CarPlay Home Icon",
+                                description = "Use a custom square image for the CarPlay home tile.",
+                                icon = Icons.Default.Home,
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                                ) {
+                                    if (customIconPreview != null) {
+                                        Image(
+                                            bitmap = customIconPreview,
+                                            contentDescription = "Selected CarPlay home icon",
+                                            modifier = Modifier.size(72.dp).aspectRatio(1f),
+                                        )
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(
+                                            text = if (selectedCustomHomeIcon == null) "Bundled icon" else "Custom icon selected",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                        )
+                                        Text(
+                                            text = "PNG or JPEG, up to 4 MB",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                    FilledTonalButton(
+                                        onClick = { iconPicker.launch(arrayOf("image/png", "image/jpeg", "image/*")) },
+                                    ) {
+                                        Icon(Icons.Default.Upload, contentDescription = "Choose image")
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Choose")
+                                    }
+                                    if (selectedCustomHomeIcon != null) {
+                                        IconButton(
+                                            onClick = { selectedCustomHomeIcon = null },
+                                        ) {
+                                            Icon(Icons.Default.Close, contentDescription = "Use bundled icon")
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // ===== Keys Tab =====
+                        2 -> {
+                            InputKeyMappingCard(
+                                mappings = inputKeyMappings,
+                                capturingAction = inputKeyCaptureAction,
+                                onStartCapture = onStartInputKeyCapture,
+                                onCancelCapture = onCancelInputKeyCapture,
+                                onRemoveMapping = onRemoveInputKeyMapping,
+                            )
+                            LogcatKeyMappingCard(
+                                mappings = logcatMappings,
+                                monitorStatus = logcatMonitorStatus,
+                                readLogsGranted = logcatReadLogsGranted,
+                                onAddMapping = onAddLogcatMapping,
+                                onRemoveMapping = onRemoveLogcatMapping,
+                            )
                         }
 
                         // ===== Misc Tab =====
-                        2 -> {
+                        3 -> {
+
                             // GPS Forwarding Configuration
                             ConfigurationOptionCard(
                                 title = "GPS Forwarding",
@@ -875,6 +1021,7 @@ fun AdapterConfigurationDialog(
                             )
                             scope.launch {
                                 adapterConfigPreference.resetToDefaults()
+                                withContext(Dispatchers.IO) { CustomHomeIconStore.clear(context) }
                                 onDismiss()
                             }
                         },
@@ -912,6 +1059,12 @@ fun AdapterConfigurationDialog(
                             // the firmware-bug workaround as a literal. If the BoxSettings
                             // hardcode ever changes, this log will silently lie — keep in sync.
                             scope.launch {
+                                withContext(Dispatchers.IO) {
+                                    CustomHomeIconStore.saveBytes(context, selectedCustomHomeIcon)
+                                }
+                                if (customHomeIconChanged) {
+                                    adapterConfigPreference.markCustomHomeIconChanged()
+                                }
                                 // Save all configuration
                                 adapterConfigPreference.setAudioSource(selectedAudioSource)
                                 adapterConfigPreference.setMicSource(selectedMicSource)
@@ -1002,6 +1155,241 @@ fun AdapterConfigurationDialog(
         }
     }
 }
+
+@Composable
+private fun InputKeyMappingCard(
+    mappings: Map<Int, InputKeyAction>,
+    capturingAction: InputKeyAction?,
+    onStartCapture: (InputKeyAction) -> Unit,
+    onCancelCapture: () -> Unit,
+    onRemoveMapping: (InputKeyAction) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    ConfigurationOptionCard(
+        title = "External Key Mapping",
+        description = "Assign external input keys to projection controls.",
+        icon = Icons.Default.SettingsInputComponent,
+    ) {
+        InputKeyAction.entries.forEach { action ->
+            val mappedKeyCode = mappings.entries.firstOrNull { it.value == action }?.key
+            val isCapturing = capturingAction == action
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(action.label, style = MaterialTheme.typography.bodyMedium)
+                    Text(
+                        text = mappedKeyCode?.let { keyCodeLabel(it) } ?: "Not mapped",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (mappedKeyCode == null) colorScheme.onSurfaceVariant else colorScheme.primary,
+                    )
+                }
+                TextButton(
+                    onClick = {
+                        if (isCapturing) onCancelCapture() else onStartCapture(action)
+                    },
+                ) {
+                    Text(if (isCapturing) "Cancel" else "Capture")
+                }
+                if (mappedKeyCode != null && !isCapturing) {
+                    TextButton(onClick = { onRemoveMapping(action) }) {
+                        Text("Clear")
+                    }
+                }
+            }
+        }
+        if (capturingAction != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Press a key for ${capturingAction.label}",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun LogcatKeyMappingCard(
+    mappings: List<LogcatKeyMapping>,
+    monitorStatus: LogcatMonitorStatus,
+    readLogsGranted: Boolean,
+    onAddMapping: (String, InputKeyAction, LogcatTriggerMode) -> Unit,
+    onRemoveMapping: (String) -> Unit,
+) {
+    val colorScheme = MaterialTheme.colorScheme
+    var pattern by remember { mutableStateOf("") }
+    var selectedAction by remember { mutableStateOf(InputKeyAction.NEXT) }
+    var selectedMode by remember { mutableStateOf(LogcatTriggerMode.CARPLAY_ONLY) }
+    var actionMenuExpanded by remember { mutableStateOf(false) }
+    val canAdd = isValidLogcatPattern(pattern)
+
+    ConfigurationOptionCard(
+        title = "Logcat Key Triggers",
+        description = "Match a vehicle log line and run one projection action.",
+        icon = Icons.Default.Terminal,
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Monitor: ${monitorStatus.label}",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (monitorStatus == LogcatMonitorStatus.ERROR) colorScheme.error else colorScheme.primary,
+            )
+            if (mappings.isNotEmpty() && !readLogsGranted) {
+                Text(
+                    text = "Limited",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = colorScheme.error,
+                )
+            }
+        }
+        if (!readLogsGranted) {
+            Text(
+                text = "System log access is unavailable for this install; privileged or adb-granted READ_LOGS is required for vehicle logs.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.error,
+            )
+        }
+        OutlinedTextField(
+            value = pattern,
+            onValueChange = { pattern = it },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            label = { Text("Log text") },
+            supportingText = { Text("Case-insensitive contains; use % or * for wildcards") },
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                OutlinedButton(
+                    onClick = { actionMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = selectedAction.label,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+                DropdownMenu(
+                    expanded = actionMenuExpanded,
+                    onDismissRequest = { actionMenuExpanded = false },
+                ) {
+                    InputKeyAction.entries.forEach { action ->
+                        DropdownMenuItem(
+                            text = { Text(action.label) },
+                            onClick = {
+                                selectedAction = action
+                                actionMenuExpanded = false
+                            },
+                        )
+                    }
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            LogcatTriggerMode.entries.forEach { mode ->
+                val selected = selectedMode == mode
+                Button(
+                    onClick = { selectedMode = mode },
+                    modifier = Modifier.weight(1f),
+                    colors =
+                        ButtonDefaults.buttonColors(
+                            containerColor = if (selected) colorScheme.primary else colorScheme.surfaceVariant,
+                            contentColor = if (selected) colorScheme.onPrimary else colorScheme.onSurfaceVariant,
+                        ),
+                ) {
+                    Text(
+                        text = mode.label,
+                        maxLines = 1,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+        if (selectedMode == LogcatTriggerMode.LOCAL_ONLY) {
+            Text(
+                text = "Local only records the matched action and sends no command to CarPlay or Android media.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+        } else if (selectedAction == InputKeyAction.PAUSE) {
+            Text(
+                text = "Play / pause is sent only through the CarPlay adapter command; no Android media key is generated.",
+                style = MaterialTheme.typography.bodySmall,
+                color = colorScheme.onSurfaceVariant,
+            )
+        }
+        Button(
+            onClick = {
+                onAddMapping(pattern, selectedAction, selectedMode)
+                pattern = ""
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = canAdd,
+        ) {
+            Text("Add trigger")
+        }
+
+        mappings.forEach { mapping ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = mapping.pattern,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = "${mapping.action.label} · ${mapping.mode.label}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = colorScheme.onSurfaceVariant,
+                        maxLines = 2,
+                        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                    )
+                }
+                IconButton(onClick = { onRemoveMapping(mapping.id) }) {
+                    Icon(Icons.Default.Delete, contentDescription = "Remove trigger")
+                }
+            }
+        }
+    }
+}
+
+private fun keyCodeLabel(keyCode: Int): String =
+    android.view.KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
+
+private fun decodeIconPreview(bytes: ByteArray): ImageBitmap? {
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+    if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+    val sample = maxOf(1, maxOf(bounds.outWidth, bounds.outHeight) / 256)
+    val options = BitmapFactory.Options().apply { inSampleSize = sample }
+    return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)?.asImageBitmap()
+}
+
+private fun ByteArray?.sameBytesAs(other: ByteArray?): Boolean =
+    when {
+        this === other -> true
+        this == null || other == null -> false
+        else -> contentEquals(other)
+    }
 
 /**
  * Configuration Option Card - Container for a single configuration option
