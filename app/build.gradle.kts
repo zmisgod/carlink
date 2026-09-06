@@ -24,8 +24,8 @@ android {
         applicationId = ownerApplicationId
         minSdk = 29
         targetSdk = 36
-        // Bump for the bundled CarPlay home icon replacement and adapter migration.
-        versionCode = 147
+        // Bump for the pre-resize matte removal in custom CarPlay home icons.
+        versionCode = 149
         versionName = "1.0.0"
 
 //###############################################

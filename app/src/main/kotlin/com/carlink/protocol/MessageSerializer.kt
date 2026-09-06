@@ -293,6 +293,39 @@ object MessageSerializer {
     }
 
     /**
+     * Select the icon source used by the adapter's CarPlay session.
+     *
+     * This is a dedicated 0x09 message, not a COMMAND(0x08) frame whose payload
+     * happens to contain command id 9. The firmware uses 1 for the visible OEM
+     * icon path and 3 for the hidden-icon configuration.
+     */
+    fun serializeLogoType(logoType: Int): ByteArray {
+        require(logoType in 0..3) { "logoType must be between 0 and 3" }
+        val payload =
+            ByteBuffer
+                .allocate(4)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .putInt(logoType)
+                .array()
+        return serializeWithPayload(MessageType.LOGO_TYPE, payload)
+    }
+
+    /** Serialize the adapter manufacturer/brand selection sent before logo files. */
+    fun serializeManufacturerInfo(
+        brandId: Int = 0,
+        variant: Int = 0,
+    ): ByteArray {
+        val payload =
+            ByteBuffer
+                .allocate(8)
+                .order(ByteOrder.LITTLE_ENDIAN)
+                .putInt(brandId)
+                .putInt(variant)
+                .array()
+        return serializeWithPayload(MessageType.MANUFACTURER_INFO, payload)
+    }
+
+    /**
      * Serialize a number to a file.
      */
     fun serializeNumber(
@@ -838,6 +871,10 @@ object MessageSerializer {
         messages: MutableList<ByteArray>,
         config: AdapterConfig,
     ) {
+        // The adapter keeps LogoType across sessions. Selecting the source explicitly is
+        // required; writing /etc/icon_* alone does not make CarPlay stop using /etc/car.png.
+        messages.add(serializeManufacturerInfo())
+        messages.add(serializeLogoType(if (config.oemIconVisible) 1 else 3))
         config.icon120Data?.let { messages.add(serializeFile(FileAddress.ICON_120.path, it)) }
         config.icon180Data?.let { messages.add(serializeFile(FileAddress.ICON_180.path, it)) }
         config.icon256Data?.let { messages.add(serializeFile(FileAddress.ICON_256.path, it)) }
@@ -864,6 +901,8 @@ object MessageSerializer {
         messages.add(serializeNumber(0, FileAddress.CHARGE_MODE))
 
         // Upload icons if provided
+        messages.add(serializeManufacturerInfo())
+        messages.add(serializeLogoType(if (config.oemIconVisible) 1 else 3))
         config.icon120Data?.let { messages.add(serializeFile(FileAddress.ICON_120.path, it)) }
         config.icon180Data?.let { messages.add(serializeFile(FileAddress.ICON_180.path, it)) }
         config.icon256Data?.let { messages.add(serializeFile(FileAddress.ICON_256.path, it)) }

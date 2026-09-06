@@ -14,7 +14,10 @@ object CustomHomeIconStore {
     private const val ENABLED_KEY = "enabled"
     private const val FILE_NAME = "custom_home_icon.png"
     private const val MAX_BYTES = 4 * 1024 * 1024
-    private const val MAX_DIMENSION = 4096
+    // Large source artwork is downsampled before decoding by IconAssets, so accepting up to
+    // 8192px lets the document picker handle high-resolution square icons without allocating
+    // an unnecessarily large bitmap on the device.
+    private const val MAX_DIMENSION = 8192
 
     private fun iconFile(context: Context): File = File(context.applicationContext.filesDir, FILE_NAME)
 
