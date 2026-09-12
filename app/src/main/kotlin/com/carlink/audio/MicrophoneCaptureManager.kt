@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.media.AudioFormat
 import android.media.AudioRecord
-import android.media.MediaRecorder
 import android.os.Process
 import android.util.Log
 import androidx.core.content.ContextCompat
@@ -100,6 +99,7 @@ object MicFormats {
 class MicrophoneCaptureManager(
     private val context: Context,
     private val logCallback: LogCallback,
+    private val diagnostic: Boolean = false,
 ) {
     private var audioRecord: AudioRecord? = null
     private var micBuffer: AudioRingBuffer? = null
@@ -148,18 +148,31 @@ class MicrophoneCaptureManager(
                 return true
             }
 
+            AudioDiagnosticsState.lastInputError.value = ""
             if (!hasPermission()) {
                 log("[MIC] ERROR: RECORD_AUDIO permission not granted")
                 return false
             }
 
-            val format = MicFormats.fromDecodeType(decodeType)
+            if (decodeType != 3 && decodeType != 5) {
+                log("[MIC] ERROR: Unsupported upstream mic decodeType=$decodeType; expected 8kHz/16kHz mono")
+                return false
+            }
+            if (!MicCaptureLease.acquire(this, diagnostic, ::stop)) {
+                AudioDiagnosticsState.input.value = "麦克风正由 Siri / 通话占用，请结束后再测试"
+                return false
+            }
+            val format = MicFormats.fromDecodeType(decodeType).copy(channelCount = 1)
+            val captureChannels = AudioRoutePreferences.channels(context)
+            val selectedChannel = AudioRoutePreferences.channel(context)
+            val inputMask = if (captureChannels == 1) android.media.AudioFormat.CHANNEL_IN_MONO else android.media.AudioFormat.CHANNEL_IN_STEREO
+            var started = false
 
             try {
                 val minBufferSize =
                     AudioRecord.getMinBufferSize(
                         format.sampleRate,
-                        format.channelConfig,
+                        inputMask,
                         format.encoding,
                     )
 
@@ -170,16 +183,27 @@ class MicrophoneCaptureManager(
 
                 val recordBufferSize = minBufferSize * 3
 
-                // VOICE_COMMUNICATION requests OS echo cancellation/noise suppression
-                // (HAL-dependent — see class doc).
-                audioRecord =
-                    AudioRecord(
-                        MediaRecorder.AudioSource.VOICE_COMMUNICATION,
-                        format.sampleRate,
-                        format.channelConfig,
-                        format.encoding,
-                        recordBufferSize,
-                    )
+                val captureFormat = android.media.AudioFormat.Builder()
+                    .setEncoding(format.encoding).setSampleRate(format.sampleRate).apply {
+                        if (captureChannels <= 2) setChannelMask(inputMask)
+                        else setChannelIndexMask((1 shl captureChannels) - 1)
+                    }.build()
+                audioRecord = AudioRecord.Builder()
+                    .setAudioSource(AudioRoutePreferences.micSource(context))
+                    .setAudioFormat(captureFormat)
+                    .setBufferSizeInBytes(maxOf(recordBufferSize, format.sampleRate * captureChannels * 2 / 5))
+                    .build()
+                val device = AudioRoutePreferences.selected(context, AudioRoutePreferences.INPUT)
+                val configured = AudioRoutePreferences.store(context).getString(AudioRoutePreferences.INPUT, "").orEmpty()
+                if (configured.isNotBlank() && device == null) {
+                    throw IllegalStateException("所选输入设备已断开，请重新选择或改为系统自动")
+                }
+                if (!audioRecord!!.setPreferredDevice(device)) {
+                    throw IllegalStateException("系统拒绝所选麦克风设备")
+                }
+                if (audioRecord!!.channelCount != captureChannels) {
+                    throw IllegalStateException("所选 $captureChannels 声道格式不可用，实际为 ${audioRecord!!.channelCount}")
+                }
 
                 if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
                     log("[MIC] ERROR: AudioRecord failed to initialize")
@@ -201,8 +225,14 @@ class MicrophoneCaptureManager(
                 overrunCount = 0
 
                 audioRecord?.startRecording()
+                if (audioRecord?.recordingState != AudioRecord.RECORDSTATE_RECORDING) {
+                    throw IllegalStateException("系统未启动麦克风采集，请检查麦克风权限和隐私开关")
+                }
                 isRunning.set(true)
-                captureThread = MicCaptureThread(format).also { it.start() }
+                AudioDiagnosticsState.recording.value = true
+                captureThread = MicCaptureThread(format, captureChannels, selectedChannel).also { it.start() }
+                AudioDiagnosticsState.input.value = "${if (diagnostic) "测试" else "Siri / 通话"}采集中：${format.sampleRate}Hz，$captureChannels 声道；${AudioRoutePreferences.label(audioRecord?.routedDevice)}"
+                started = true
 
                 log(
                     "[MIC] Capture started: ${format.sampleRate}Hz ${format.channelCount}ch " +
@@ -231,6 +261,12 @@ class MicrophoneCaptureManager(
                 audioRecord = null
                 micBuffer = null
                 return false
+            } finally {
+                if (!started) {
+                    audioRecord?.release()
+                    audioRecord = null
+                    MicCaptureLease.release(this)
+                }
             }
         }
     }
@@ -276,6 +312,10 @@ class MicrophoneCaptureManager(
 
             val durationMs = if (startTime > 0) System.currentTimeMillis() - startTime else 0
             currentFormat = null
+            AudioDiagnosticsState.recording.value = false
+            AudioDiagnosticsState.meters.value = emptyList()
+            AudioDiagnosticsState.input.value = "麦克风已停止"
+            MicCaptureLease.release(this)
             log("[MIC] Capture stopped: duration=${durationMs}ms bytes=$totalBytesCapture overruns=$overrunCount")
         }
     }
@@ -345,6 +385,10 @@ class MicrophoneCaptureManager(
     }
 
     private fun log(message: String) {
+        if (message.contains("ERROR")) {
+            AudioDiagnosticsState.input.value = message
+            AudioDiagnosticsState.lastInputError.value = message
+        }
         logCallback.log("MIC", message)
     }
 
@@ -364,14 +408,21 @@ class MicrophoneCaptureManager(
             Log.w("CARLINK", "[MIC] Release during error cleanup: ${e.message}")
         }
         audioRecord = null
+        AudioDiagnosticsState.recording.value = false
+        AudioDiagnosticsState.meters.value = emptyList()
+        MicCaptureLease.release(this)
     }
 
     /** Capture thread (URGENT_AUDIO priority). Reads AudioRecord, writes to ring buffer. */
     private inner class MicCaptureThread(
         private val format: MicFormatConfig,
+        private val captureChannels: Int,
+        private val selectedChannel: Int,
     ) : Thread("MicCapture") {
-        private val chunkSize = (format.sampleRate * format.bytesPerSample * captureChunkMs) / 1000
+        private val chunkSize = (format.sampleRate * 2 * captureChannels * captureChunkMs) / 1000
         private val tempBuffer = ByteArray(chunkSize)
+        private val monoBuffer = ByteArray(chunkSize / captureChannels)
+        private var lastMeterAt = 0L
 
         override fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_URGENT_AUDIO)
@@ -383,18 +434,27 @@ class MicrophoneCaptureManager(
 
             while (isRunning.get() && !isInterrupted) {
                 try {
-                    val bytesRead = record.read(tempBuffer, 0, chunkSize)
+                    val bytesRead = record.read(tempBuffer, 0, chunkSize, AudioRecord.READ_NON_BLOCKING)
 
                     when {
                         bytesRead > 0 -> {
-                            val bytesWritten = buffer.write(tempBuffer, 0, bytesRead)
+                            val now = android.os.SystemClock.elapsedRealtime()
+                            if (now - lastMeterAt >= 80) {
+                                AudioDiagnosticsState.meters.value = PcmChannels.meters(tempBuffer, bytesRead, captureChannels)
+                                AudioDiagnosticsState.input.value = "${if (diagnostic) "测试" else "Siri / 通话"}：${format.sampleRate}Hz / $captureChannels ch，上传${if (selectedChannel < 0) "混合" else "声道 ${selectedChannel + 1}"}；实际=${AudioRoutePreferences.label(record.routedDevice)}"
+                                lastMeterAt = now
+                            }
+                            val monoBytes = PcmChannels.mono(tempBuffer, bytesRead, captureChannels, selectedChannel, monoBuffer)
+                            val bytesWritten = if (diagnostic) monoBytes else buffer.write(monoBuffer, 0, monoBytes)
                             totalBytesCapture += bytesWritten
 
-                            if (bytesWritten < bytesRead) {
+                            if (bytesWritten < monoBytes) {
                                 overrunCount++
                                 log("[MIC] Buffer overrun: wrote $bytesWritten of $bytesRead bytes")
                             }
                         }
+
+                        bytesRead == 0 -> Thread.sleep(5)
 
                         bytesRead == AudioRecord.ERROR_INVALID_OPERATION -> {
                             log("[MIC] ERROR: Invalid operation")
@@ -423,7 +483,9 @@ class MicrophoneCaptureManager(
                 } catch (e: InterruptedException) {
                     break
                 } catch (e: Exception) {
-                    log("[MIC] Capture thread error: ${e.message}")
+                    log("[MIC] ERROR: Capture thread error: ${e.message}")
+                    fatalError = true
+                    break
                 }
             }
 

@@ -275,7 +275,7 @@ private fun UsbDeviceCard(
 
             if (isConnected && phoneType != null) {
                 Text(
-                    text = "Connected",
+                    text = "已连接",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.White.copy(alpha = 0.85f),
                 )
@@ -298,7 +298,7 @@ private fun UsbDeviceCard(
                 )
             } else {
                 Text(
-                    text = "No device",
+                    text = "未连接设备",
                     style = MaterialTheme.typography.bodyLarge,
                     color = colorScheme.onSurface.copy(alpha = 0.38f),
                 )
@@ -395,13 +395,13 @@ private fun WirelessDeviceCard(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Status line — single field: "Connected" or "Last seen: ..."
+            // Status line — single field: "已连接" or "Last seen: ..."
             Text(
                 text =
                     if (isConnected) {
-                        "Connected"
+                        "已连接"
                     } else {
-                        device.lastConnected?.let { "Last seen: $it" } ?: "Disconnected"
+                        device.lastConnected?.let { "上次连接：$it" } ?: "已断开"
                     },
                 style = MaterialTheme.typography.bodySmall,
                 color = if (isConnected) Color.White.copy(alpha = 0.85f) else colorScheme.onSurfaceVariant,
@@ -413,7 +413,7 @@ private fun WirelessDeviceCard(
             // Push remove button to bottom
             Spacer(modifier = Modifier.weight(1f))
 
-            // Remove button — matches "Disconnect Adapter" style (filled error)
+            // Remove button — matches "断开适配器" style (filled error)
             Button(
                 onClick = onRemove,
                 enabled = enabled,
@@ -431,7 +431,7 @@ private fun WirelessDeviceCard(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Remove",
+                    text = "移除",
                     style = MaterialTheme.typography.titleMedium,
                 )
             }
@@ -472,13 +472,13 @@ private fun EmptyDeviceCard(modifier: Modifier = Modifier) {
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "No paired wireless devices",
+                text = "暂无已配对的无线设备",
                 style = MaterialTheme.typography.titleMedium,
                 color = colorScheme.onSurface.copy(alpha = 0.6f),
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Connect a phone to the adapter to get started",
+                text = "将手机连接到适配器即可开始使用",
                 style = MaterialTheme.typography.bodyMedium,
                 color = colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
             )
@@ -512,11 +512,11 @@ private fun RemoveDeviceDialog(
     AlertDialog(
         // Back press / scrim tap both clear deviceToRemove via onDismiss.
         onDismissRequest = onDismiss,
-        title = { Text("Remove Device") },
+        title = { Text("移除设备") },
         text = {
             Text(
-                "Remove \"$deviceName\" from the adapter's paired device list? " +
-                    "The adapter will no longer auto-connect to this device.",
+                "要从适配器的配对列表中移除“$deviceName”吗？" +
+                    "适配器将不再自动连接此设备。",
             )
         },
         confirmButton = {
@@ -527,12 +527,12 @@ private fun RemoveDeviceDialog(
                         contentColor = MaterialTheme.colorScheme.error,
                     ),
             ) {
-                Text("Remove")
+                Text("移除")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("取消")
             }
         },
     )

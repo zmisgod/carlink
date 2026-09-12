@@ -120,10 +120,10 @@ internal fun LogsTabContent(
                     result
                         // TODO(cleanup): bytesWritten is unused — rename to `_` in a future cleanup.
                         .onSuccess { bytesWritten ->
-                            Toast.makeText(context, "Exported: ${fileToExport.name}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "已导出：${fileToExport.name}", Toast.LENGTH_SHORT).show()
                         }.onFailure { error ->
                             logError("[FILE_EXPORT] Export failed: ${error.message}", tag = "FILE_LOG")
-                            Toast.makeText(context, "Export failed: ${error.message}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, "导出失败：${error.message}", Toast.LENGTH_SHORT).show()
                         }
                     pendingExportFile = null
                     isExporting = false
@@ -167,7 +167,7 @@ internal fun LogsTabContent(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = "File logging not available",
+                text = "文件日志不可用",
                 style = MaterialTheme.typography.bodyLarge,
                 color = colorScheme.onSurfaceVariant,
             )
@@ -195,7 +195,7 @@ internal fun LogsTabContent(
             verticalArrangement = Arrangement.spacedBy(24.dp),
         ) {
             LoggingControlCard(
-                title = "File Logging",
+                title = "文件日志",
                 icon = Icons.AutoMirrored.Filled.Article,
             ) {
                 Row(
@@ -207,12 +207,12 @@ internal fun LogsTabContent(
                 ) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "Save logs to file",
+                            text = "将日志保存到文件",
                             style = MaterialTheme.typography.titleMedium,
                         )
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "Store app logs in private storage for debugging",
+                            text = "将应用日志保存到私有存储，供调试使用",
                             style = MaterialTheme.typography.bodyMedium,
                             color = colorScheme.onSurfaceVariant,
                         )
@@ -248,7 +248,7 @@ internal fun LogsTabContent(
 
                 Column {
                     Text(
-                        text = "Log Level",
+                        text = "日志级别",
                         style =
                             MaterialTheme.typography.titleMedium.copy(
                                 fontWeight = FontWeight.Medium,
@@ -308,7 +308,7 @@ internal fun LogsTabContent(
                     ) {
                         Column(modifier = Modifier.padding(12.dp)) {
                             Text(
-                                text = "Status",
+                                text = "状态",
                                 style =
                                     MaterialTheme.typography.labelLarge.copy(
                                         fontWeight = FontWeight.SemiBold,
@@ -317,20 +317,20 @@ internal fun LogsTabContent(
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             FileLoggingStatusRow(
-                                label = "Logging:",
-                                value = if (isLoggingEnabled) "Enabled" else "Disabled",
+                                label = "日志记录：",
+                                value = if (isLoggingEnabled) "已启用" else "已禁用",
                             )
                             FileLoggingStatusRow(
-                                label = "Log files:",
+                                label = "日志文件数：",
                                 value = logFiles.size.toString(),
                             )
                             FileLoggingStatusRow(
-                                label = "Total size:",
+                                label = "总大小：",
                                 value = formatBytes(totalSize),
                             )
                             if (isLoggingEnabled && currentFileSize > 0) {
                                 FileLoggingStatusRow(
-                                    label = "Current file:",
+                                    label = "当前文件：",
                                     value = formatBytes(currentFileSize),
                                 )
                             }
@@ -342,7 +342,7 @@ internal fun LogsTabContent(
             // Log Files Card
             if (logFiles.isNotEmpty()) {
                 LoggingControlCard(
-                    title = "Log Files",
+                    title = "日志文件",
                     icon = Icons.Default.Folder,
                 ) {
                     Column(
@@ -357,7 +357,7 @@ internal fun LogsTabContent(
                                 onExport = {
                                     // Check file still exists before export
                                     if (!file.exists()) {
-                                        Toast.makeText(context, "File no longer exists", Toast.LENGTH_SHORT).show()
+                                        Toast.makeText(context, "文件已不存在", Toast.LENGTH_SHORT).show()
                                         logFiles = fileLogManager.getLogFiles()
                                         return@LogFileItem
                                     }
@@ -384,7 +384,7 @@ internal fun LogsTabContent(
                                                 "[FILE_EXPORT] Failed to launch document picker: ${e.message}",
                                                 tag = "FILE_LOG",
                                             )
-                                            Toast.makeText(context, "Cannot open file picker", Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(context, "无法打开文件选择器", Toast.LENGTH_SHORT).show()
                                             pendingExportFile = null
                                             isExporting = false
                                         }
@@ -424,11 +424,11 @@ internal fun LogsTabContent(
                     tint = colorScheme.error,
                 )
             },
-            title = { Text("Debug Build Warning") },
+            title = { Text("调试版本提示") },
             text = {
                 Text(
-                    "This is a debug build. File logging will capture additional debug information " +
-                        "which may include sensitive data. Only enable this for debugging purposes.",
+                    "当前为调试版本，文件日志会记录更多调试信息，" +
+                        "其中可能包含敏感数据。请仅在调试时启用。",
                 )
             },
             confirmButton = {
@@ -449,12 +449,12 @@ internal fun LogsTabContent(
                             containerColor = colorScheme.error,
                         ),
                 ) {
-                    Text("Enable Anyway")
+                    Text("仍然启用")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDebugWarningDialog = false }) {
-                    Text("Cancel")
+                    Text("取消")
                 }
             },
         )
@@ -482,7 +482,7 @@ internal fun LogsTabContent(
                         )
                         Spacer(modifier = Modifier.width(16.dp))
                         Text(
-                            text = "Delete Log File",
+                            text = "删除日志文件",
                             style =
                                 MaterialTheme.typography.headlineSmall.copy(
                                     fontWeight = FontWeight.Bold,
@@ -503,12 +503,12 @@ internal fun LogsTabContent(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(
-                                    text = "Files to delete:",
+                                    text = "待删除文件：",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = colorScheme.onSurfaceVariant,
                                 )
                                 Text(
-                                    text = "1 file",
+                                    text = "1 个文件",
                                     style =
                                         MaterialTheme.typography.bodyMedium.copy(
                                             fontWeight = FontWeight.Medium,
@@ -521,7 +521,7 @@ internal fun LogsTabContent(
                                 horizontalArrangement = Arrangement.SpaceBetween,
                             ) {
                                 Text(
-                                    text = "Total size:",
+                                    text = "总大小：",
                                     style = MaterialTheme.typography.bodyMedium,
                                     color = colorScheme.onSurfaceVariant,
                                 )
@@ -582,7 +582,7 @@ internal fun LogsTabContent(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Permanent Deletion",
+                                    text = "永久删除",
                                     style =
                                         MaterialTheme.typography.titleSmall.copy(
                                             fontWeight = FontWeight.SemiBold,
@@ -593,8 +593,8 @@ internal fun LogsTabContent(
                             Spacer(modifier = Modifier.height(12.dp))
                             Text(
                                 text =
-                                    "This file will be permanently deleted from your device. " +
-                                        "This action cannot be undone.",
+                                    "将从设备中永久删除此文件，" +
+                                        "此操作无法撤销。",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = colorScheme.onErrorContainer,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight * 1.4,
@@ -612,7 +612,7 @@ internal fun LogsTabContent(
                             onClick = { showDeleteDialog = null },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("Cancel")
+                            Text("取消")
                         }
                         Button(
                             // HAZARD: deleteLogFile() and getLogFiles() run directly on the
@@ -637,7 +637,7 @@ internal fun LogsTabContent(
                                 modifier = Modifier.size(18.dp),
                             )
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Delete File")
+                            Text("删除文件")
                         }
                     }
                 }
@@ -705,7 +705,7 @@ private fun LogLevelSelectorDialog(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "Select Log Level",
+                        text = "选择日志级别",
                         style =
                             MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold,
@@ -752,7 +752,7 @@ private fun LogLevelSelectorDialog(
                     horizontalArrangement = Arrangement.End,
                 ) {
                     TextButton(onClick = onDismiss) {
-                        Text("Cancel")
+                        Text("取消")
                     }
                 }
             }
@@ -839,7 +839,7 @@ private fun LogPresetChip(
 /**
  * Material 3 card container used as a section wrapper inside the Logs tab.
  * Renders an icon + title header followed by caller-provided [content] in a
- * padded column. Used for both the "File Logging" and "Log Files" sections.
+ * padded column. Used for both the "文件日志" and "日志文件" sections.
  */
 @Composable
 private fun LoggingControlCard(
@@ -949,7 +949,7 @@ private fun LogFileItem(
             ) {
                 Icon(
                     imageVector = Icons.Default.SaveAlt,
-                    contentDescription = "Export",
+                    contentDescription = "导出",
                     tint = if (isExportEnabled) colorScheme.primary else colorScheme.onSurface.copy(alpha = 0.38f),
                     modifier = Modifier.size(24.dp),
                 )
@@ -958,7 +958,7 @@ private fun LogFileItem(
             IconButton(onClick = onDelete) {
                 Icon(
                     imageVector = Icons.Default.DeleteOutline,
-                    contentDescription = "Delete",
+                    contentDescription = "删除",
                     tint = colorScheme.error,
                     modifier = Modifier.size(24.dp),
                 )

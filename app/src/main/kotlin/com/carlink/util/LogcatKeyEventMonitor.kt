@@ -9,11 +9,11 @@ import java.util.concurrent.ConcurrentHashMap
 enum class LogcatMonitorStatus(
     val label: String,
 ) {
-    STOPPED("Stopped"),
-    STARTING("Starting"),
-    LISTENING("Listening"),
-    RESTARTING("Restarting"),
-    ERROR("Read error"),
+    STOPPED("已停止"),
+    STARTING("启动中"),
+    LISTENING("监听中"),
+    RESTARTING("重启中"),
+    ERROR("读取失败"),
 }
 
 /** Reads system logcat on a background thread and emits debounced rule matches. */

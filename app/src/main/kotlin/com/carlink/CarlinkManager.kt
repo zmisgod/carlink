@@ -188,17 +188,17 @@ class CarlinkManager(
         //
         //   Pattern A — "no initial response" errors in a row (consecutiveNoResponse >= 2).
         //               The adapter's USB write path appears dead; retrying won't help.
-        //               Surfaced as "Adapter not responding — reboot adapter".
+        //               Surfaced as "适配器无响应，请重启适配器".
         //
         //   Pattern B — SCANNING_DEVICE command arrives after a prior PLUGGED session
         //               (hadPriorSession && reconnectAttempts > 0). The adapter is alive
         //               and scanning but the phone isn't coming back — wireless subsystem
-        //               may be stuck. Surfaced as "Adapter scanning — phone not reconnecting".
+        //               may be stuck. Surfaced as "适配器正在扫描，手机尚未重新连接".
         //
         //   Pattern C — STREAMING sessions that die within SHORT_SESSION_THRESHOLD_MS,
         //               SHORT_SESSION_ESCALATION_COUNT times in a row → "connection unstable"
         //               (likely ZLP or firmware instability). Surfaced as
-        //               "Connection unstable — reboot adapter".
+        //               "连接不稳定，请重启适配器".
         //
         // Keep these labels/thresholds stable; remote logs filter on the "[ESCALATION]" tag.
         // ---------------------------------------------------------------------------------
@@ -476,6 +476,7 @@ class CarlinkManager(
     private var lastMediaArtistName: String? = null
     private var lastMediaAlbumName: String? = null
     private var lastMediaAppName: String? = null
+    private val albumArtworkOrdering = com.carlink.media.AlbumArtworkOrdering()
     private var lastAlbumCover: ByteArray? = null
     private var lastDuration: Long = 0L
     private var lastPosition: Long = 0L
@@ -507,6 +508,8 @@ class CarlinkManager(
 
     /** Clears cached media metadata to prevent stale data on reconnect. */
     private fun clearCachedMediaMetadata() {
+        albumArtworkOrdering.clear()
+        com.carlink.vehicle.VehicleProjectionState.music.value = null
         lastMediaSongName = null
         lastMediaArtistName = null
         lastMediaAlbumName = null
@@ -856,7 +859,7 @@ class CarlinkManager(
         }
 
         setState(State.CONNECTING)
-        setStatusText("Searching for adapter...")
+        setStatusText("正在查找适配器…")
         resetUnknownCounters()
 
         // Reset video renderer (only if initialized and codec is active).
@@ -882,13 +885,13 @@ class CarlinkManager(
         if (device == null) {
             logError("Failed to find Carlinkit device", tag = Logger.Tags.USB)
             setState(State.DISCONNECTED)
-            setStatusText("Adapter not found")
+            setStatusText("未找到适配器")
             return
         }
 
         log("Device found, opening")
         usbDevice = device
-        setStatusText("Adapter found — opening...")
+        setStatusText("已找到适配器，正在打开…")
 
         // AltVideo (USB 0x2C) gate — evaluated each session start (cheap; PlatformDetector
         // is not cached). Both checks must pass:
@@ -918,7 +921,7 @@ class CarlinkManager(
         if (!device.openWithPermission()) {
             logError("Failed to open USB device", tag = Logger.Tags.USB)
             setState(State.DISCONNECTED)
-            setStatusText("USB permission denied")
+            setStatusText("未获得 USB 访问权限")
             return
         }
 
@@ -990,7 +993,7 @@ class CarlinkManager(
         log("[INIT] Mode: ${adapterConfigPref.getInitializationInfo(currentVersionCode)}")
         log("[INIT] Audio mode: ${if (refreshedConfig.audioTransferMode) "BLUETOOTH" else "ADAPTER"}")
 
-        setStatusText("Initializing adapter...")
+        setStatusText("正在初始化适配器…")
         val initSuccess = adapterDriver?.start(refreshedConfig, initMode.name, pendingChanges, actualSurfaceWidth, actualSurfaceHeight) ?: false
 
         // If a targeted connect was requested (user selected a specific device),
@@ -1000,9 +1003,9 @@ class CarlinkManager(
             pendingConnectTarget = null
             logInfo("[DEVICE_MGMT] Overriding auto-connect with targeted connect: $targetMac", tag = Logger.Tags.ADAPTR)
             adapterDriver?.overrideAutoConnectWithTarget(targetMac)
-            setStatusText("Connecting to device...")
+            setStatusText("正在连接设备…")
         } else {
-            setStatusText("Waiting for phone...")
+            setStatusText("等待手机连接…")
         }
 
         // Mark first init completed, store version, and clear pending changes
@@ -1188,7 +1191,7 @@ class CarlinkManager(
      * (bulkTransfer, thread joins) that must never run on the main thread.
      */
     suspend fun restart() {
-        setStatusText("Restarting...")
+        setStatusText("正在重启…")
         withContext(Dispatchers.IO) { stop() }
         delay(2000)
         withContext(Dispatchers.IO) { start() }
@@ -1208,10 +1211,32 @@ class CarlinkManager(
      * Media and call actions are one-shot commands and are only emitted on key down
      * by MainActivity.
      */
+    @Volatile private var siriDownAt = 0L
+    private var siriReleaseJob: Job? = null
+
     fun sendInputKeyAction(
         action: InputKeyAction,
         released: Boolean = false,
     ): Boolean {
+        if (action == InputKeyAction.SIRI) {
+            if (!released) {
+                siriReleaseJob?.cancel()
+                siriDownAt = android.os.SystemClock.elapsedRealtime()
+                com.carlink.audio.AudioDiagnosticsState.microphoneBytesSent.value = 0L
+            } else {
+                val remaining = 300 - (android.os.SystemClock.elapsedRealtime() - siriDownAt)
+                if (remaining > 0) {
+                    val driver = adapterDriver
+                    val pressedAt = siriDownAt
+                    siriReleaseJob?.cancel()
+                    siriReleaseJob = scope.launch {
+                        delay(remaining)
+                        if (adapterDriver === driver && siriDownAt == pressedAt) sendInputKeyAction(action, released = true)
+                    }
+                    return driver != null
+                }
+            }
+        }
         val command =
             if (released) {
                 action.releaseCommand
@@ -1228,7 +1253,11 @@ class CarlinkManager(
                 "[INPUT_KEY] action=${action.name} command=${it.name} released=$released",
                 tag = Logger.Tags.ADAPTR,
             )
-            sendKey(it)
+            val sent = sendKey(it)
+            if (action == InputKeyAction.SIRI && !released) {
+                com.carlink.audio.AudioDiagnosticsState.siri.value = if (sent) "Siri 按下命令已发送，等待适配器 AUDIO_SIRI_START" else "Siri 命令发送失败，请检查适配器连接"
+            }
+            sent
         } ?: false
     }
 
@@ -1887,7 +1916,7 @@ class CarlinkManager(
                 }
 
                 setState(State.DEVICE_CONNECTED)
-                setStatusText("Phone connected — starting session...")
+                setStatusText("手机已连接，正在启动投屏…")
 
                 // Proactively kick AltVideo (0x2C) streaming — step 1 of the three-step 508
                 // handshake (see RE_Documention/02_Protocol_Reference/video_protocol.md
@@ -1925,7 +1954,7 @@ class CarlinkManager(
                         tag = Logger.Tags.ADAPTR,
                     )
                 } else {
-                    setStatusText("Phone unplugged")
+                    setStatusText("手机已断开")
                     scope.launch {
                         restart()
                     }
@@ -1941,7 +1970,7 @@ class CarlinkManager(
                     logInfo("Video streaming started (direct processing)", tag = Logger.Tags.VIDEO)
                     lastStreamingStartMs = System.currentTimeMillis()
                     setState(State.STREAMING)
-                    setStatusText("Streaming")
+                    setStatusText("正在投屏")
 
                     if (currentPhoneType == PhoneType.ANDROID_AUTO) {
                         // AA needs one keyframe request at session start to stabilize video.
@@ -1989,20 +2018,20 @@ class CarlinkManager(
                     if (hadPriorSession && reconnectAttempts > 0) {
                         // Pattern B: adapter alive and scanning, but phone lost after a prior session.
                         // Adapter's wireless subsystem may be stuck.
-                        setStatusText("Adapter scanning — phone not reconnecting")
+                        setStatusText("适配器正在扫描，手机尚未重新连接")
                         logWarn(
                             "[ESCALATION] Pattern B: adapter scanning after prior session " +
                                 "(reconnect attempt $reconnectAttempts)",
                             tag = Logger.Tags.ADAPTR,
                         )
                     } else {
-                        setStatusText("Scanning for phone...")
+                        setStatusText("正在搜索手机…")
                     }
                     logDebug("[CMD] SCANNING_DEVICE", tag = Logger.Tags.ADAPTR)
                 } else if (message.command == CommandMapping.BT_CONNECTED ||
                     message.command == CommandMapping.DEVICE_FOUND
                 ) {
-                    setStatusText("Phone found — connecting...")
+                    setStatusText("已找到手机，正在连接…")
                     logDebug("[CMD] ${message.command.name}", tag = Logger.Tags.ADAPTR)
                 } else if (message.command == CommandMapping.REQUEST_NAVI_SCREEN_FOCUS) {
                     // Step 3 of the three-step 508 handshake: adapter sent 508 back in reply to
@@ -2151,7 +2180,7 @@ class CarlinkManager(
                         tag = Logger.Tags.ADAPTR,
                     )
                     negotiationRejected = true
-                    setStatusText("Phone rejected configuration")
+                    setStatusText("手机拒绝了配置")
                 } else if (message.phase == 0 && negotiationRejected) {
                     logDebug(
                         "[PHASE] Phase 0 after negotiation rejection — not restarting",
@@ -2162,7 +2191,7 @@ class CarlinkManager(
                         "[PHASE] Phase 0 during STREAMING — session terminated by adapter",
                         tag = Logger.Tags.ADAPTR,
                     )
-                    setStatusText("Session terminated — restarting...")
+                    setStatusText("投屏已结束，正在重启…")
                     scope.launch { restart() }
                 } else if (message.phase == 0) {
                     logDebug(
@@ -2170,7 +2199,7 @@ class CarlinkManager(
                         tag = Logger.Tags.ADAPTR,
                     )
                 } else if (message.phase == 7) {
-                    setStatusText("Phone connecting...")
+                    setStatusText("手机连接中…")
                     logDebug("[PHASE] ${message.phase} (${message.phaseName})", tag = Logger.Tags.ADAPTR)
                 } else {
                     logDebug("[PHASE] ${message.phase} (${message.phaseName})", tag = Logger.Tags.ADAPTR)
@@ -2330,6 +2359,7 @@ class CarlinkManager(
             }
 
             AudioCommand.AUDIO_SIRI_START -> {
+                com.carlink.audio.AudioDiagnosticsState.siri.value = "已收到 AUDIO_SIRI_START；${if (hostProvidesMicrophone()) "使用 App 麦克风" else "使用手机 / 适配器麦克风，App 不上传录音"}"
                 logInfo(
                     "[AUDIO_CMD] Siri started - ${if (hostProvidesMicrophone()) "enabling microphone" else "adapter/phone microphone selected"} (mode: SIRI)",
                     tag = Logger.Tags.MIC,
@@ -2361,6 +2391,7 @@ class CarlinkManager(
             }
 
             AudioCommand.AUDIO_SIRI_STOP -> {
+                com.carlink.audio.AudioDiagnosticsState.siri.value = "已收到 AUDIO_SIRI_STOP"
                 // CRITICAL: Don't stop mic if phone call is active (Siri-initiated call scenario)
                 // USB capture shows: PHONECALL_START arrives ~130ms BEFORE SIRI_STOP
                 // NOTE: "~130ms" was observed on real hardware during development; the specific
@@ -2529,7 +2560,10 @@ class CarlinkManager(
                     scheduleAtFixedRate(
                         object : TimerTask() {
                             override fun run() {
-                                sendMicrophoneData()
+                                try { sendMicrophoneData() } catch (error: Exception) {
+                                    com.carlink.audio.AudioDiagnosticsState.lastInputError.value = "麦克风发送失败：${error.message}"
+                                    logWarn("Microphone send failed: ${error.message}", tag = Logger.Tags.MIC)
+                                }
                             }
                         },
                         0,
@@ -2555,15 +2589,24 @@ class CarlinkManager(
 
     private fun sendMicrophoneData() {
         if (!isMicrophoneCapturing) return
+        if (microphoneManager?.isCapturing() != true) {
+            stopMicrophoneCapture()
+            return
+        }
 
         val chunkSize = if (currentMicDecodeType == 3) 320 else 640 // 20ms at 8kHz or 16kHz mono
         val data = microphoneManager?.readChunk(maxBytes = chunkSize) ?: return
         if (data.isNotEmpty()) {
-            adapterDriver?.sendAudio(
+            val sent = adapterDriver?.sendAudio(
                 data = data,
                 decodeType = currentMicDecodeType,
                 audioType = currentMicAudioType,
-            )
+            ) == true
+            if (sent) {
+                com.carlink.audio.AudioDiagnosticsState.microphoneBytesSent.value += data.size
+            } else {
+                com.carlink.audio.AudioDiagnosticsState.lastInputError.value = "麦克风 PCM 写入适配器失败"
+            }
         }
     }
 
@@ -2667,13 +2710,17 @@ class CarlinkManager(
             return
         }
 
-        // Android Auto album art arrives as a standalone MEDIA_DATA subtype 2 message (PNG).
-        // Cache it and push a metadata update so MediaSession gets the cover immediately,
-        // without waiting for the next subtype-1 JSON tick which carries no image bytes.
-        if (message.type == MediaType.ALBUM_COVER_AA) {
+        // Both AA (subtype 2 PNG) and CarPlay (subtype 3 JPEG) send standalone covers.
+        // Retain a short-lived pending cover across an immediately following title reset.
+        if (message.type == MediaType.ALBUM_COVER_AA || message.type == MediaType.ALBUM_COVER) {
             val coverBytes = message.payload["AlbumCover"] as? ByteArray
             if (coverBytes != null) {
+                albumArtworkOrdering.onStandalone(coverBytes, android.os.SystemClock.elapsedRealtime())
                 lastAlbumCover = coverBytes
+                com.carlink.vehicle.VehicleProjectionState.updateMusic(
+                    MediaInfo(lastMediaSongName, lastMediaArtistName, lastMediaAlbumName, lastMediaAppName,
+                        lastAlbumCover, lastDuration, lastPosition, lastIsPlaying),
+                )
                 mediaSessionManager?.updateMetadata(
                     title = lastMediaSongName,
                     artist = lastMediaArtistName,
@@ -2753,7 +2800,7 @@ class CarlinkManager(
             lastMediaSongName = null
             lastMediaArtistName = null
             lastMediaAlbumName = null
-            lastAlbumCover = null
+            lastAlbumCover = albumArtworkOrdering.onTitleChanged(android.os.SystemClock.elapsedRealtime())
             lastDuration = 0L
             lastPosition = 0L
             // Keep appName - typically doesn't change mid-session
@@ -2773,6 +2820,7 @@ class CarlinkManager(
         // Process album cover after song change detection
         val albumCover = payload["AlbumCover"] as? ByteArray
         if (albumCover != null) {
+            albumArtworkOrdering.clear()
             lastAlbumCover = albumCover
         }
 
@@ -2798,6 +2846,8 @@ class CarlinkManager(
                 position = position,
                 isPlaying = isPlaying,
             )
+
+        com.carlink.vehicle.VehicleProjectionState.updateMusic(mediaInfo)
 
         // WHY this broader predicate: AA's incremental metadata stream would
         // otherwise suppress legitimate artist/album/appName/duration-only
@@ -2919,14 +2969,14 @@ class CarlinkManager(
             // Escalate status based on observed patterns
             if (consecutiveNoResponse >= 2) {
                 // Pattern A: adapter USB write dead — retrying won't help
-                setStatusText("Adapter not responding — reboot adapter")
+                setStatusText("适配器无响应，请重启适配器")
                 logWarn("[ESCALATION] Pattern A: $consecutiveNoResponse consecutive no-response errors", tag = Logger.Tags.USB)
             } else if (shortLivedStreamingCount >= SHORT_SESSION_ESCALATION_COUNT) {
                 // Pattern C: sessions keep dying within seconds
-                setStatusText("Connection unstable — reboot adapter")
+                setStatusText("连接不稳定，请重启适配器")
                 logWarn("[ESCALATION] Pattern C: $shortLivedStreamingCount short-lived sessions", tag = Logger.Tags.USB)
             } else if (isNoResponse) {
-                setStatusText("Adapter not responding — reconnecting...")
+                setStatusText("适配器无响应，正在重新连接…")
             }
             scheduleReconnect()
         }
@@ -2966,10 +3016,10 @@ class CarlinkManager(
                 tag = Logger.Tags.USB,
             )
             val giveUpMessage = when {
-                consecutiveNoResponse >= 2 -> "Adapter not responding — reboot adapter"
-                shortLivedStreamingCount >= SHORT_SESSION_ESCALATION_COUNT -> "Connection unstable — reboot adapter"
-                hadPriorSession -> "Phone not reconnecting — reboot adapter"
-                else -> "Adapter not responding — unplug and replug adapter"
+                consecutiveNoResponse >= 2 -> "适配器无响应，请重启适配器"
+                shortLivedStreamingCount >= SHORT_SESSION_ESCALATION_COUNT -> "连接不稳定，请重启适配器"
+                hadPriorSession -> "手机未重新连接，请重启适配器"
+                else -> "适配器无响应，请拔下后重新插入"
             }
             // After give-up: reconnectAttempts is reset to 0, but shortLivedStreamingCount
             // / consecutiveNoResponse are NOT reset. A user who manually taps reconnect
@@ -2999,7 +3049,7 @@ class CarlinkManager(
             tag = Logger.Tags.USB,
         )
 
-        setStatusText("Reconnecting ($reconnectAttempts/$MAX_RECONNECT_ATTEMPTS)...")
+        setStatusText("正在重新连接（$reconnectAttempts/$MAX_RECONNECT_ATTEMPTS）…")
 
         reconnectJob =
             scope.launch {

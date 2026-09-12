@@ -83,7 +83,7 @@ fun MainScreen(
     // all session-scoped state resets automatically. This prevents stale callbacks, flags,
     // or touch state from the old manager leaking into the new session.
     var connectionState by remember(carlinkManager) { mutableStateOf(CarlinkManager.State.DISCONNECTED) }
-    var statusText by remember(carlinkManager) { mutableStateOf("Connect Adapter") }
+    var statusText by remember(carlinkManager) { mutableStateOf("请连接适配器") }
     var isResetting by remember(carlinkManager) { mutableStateOf(false) }
     val surfaceState = rememberVideoSurfaceState()
     var isAndroidAuto by remember(carlinkManager) { mutableStateOf(false) }
@@ -357,12 +357,12 @@ fun MainScreen(
                 ) {
                     Icon(
                         imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
+                        contentDescription = "设置",
                         modifier = Modifier.size(AutomotiveDimens.IconSize),
                     )
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Settings",
+                        text = "设置",
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -424,14 +424,14 @@ fun MainScreen(
                         } else {
                             Icon(
                                 imageVector = Icons.Default.RestartAlt,
-                                contentDescription = "Reset Device",
+                                contentDescription = "重置设备",
                                 modifier = Modifier.size(AutomotiveDimens.IconSize),
                             )
                         }
                     }
                     Spacer(modifier = Modifier.width(8.dp))
                     Text(
-                        text = "Reset Device",
+                        text = "重置设备",
                         style = MaterialTheme.typography.titleLarge,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,

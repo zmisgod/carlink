@@ -25,53 +25,53 @@ enum class LogPreset(
     val color: Color,
 ) {
     SILENT(
-        displayName = "Silent",
-        description = "Only errors",
+        displayName = "静默",
+        description = "仅记录错误",
         color = Color(0xFFE57373), // red[300]
     ),
     MINIMAL(
-        displayName = "Minimal",
-        description = "Errors + warnings",
+        displayName = "精简",
+        description = "错误和警告",
         color = Color(0xFFFFB74D), // orange[300]
     ),
     NORMAL(
-        displayName = "Normal",
-        description = "Standard operational logging",
+        displayName = "常规",
+        description = "常规运行日志",
         color = Color(0xFF64B5F6), // blue[300]
     ),
     DEBUG(
-        displayName = "Debug",
-        description = "Full debug (no raw data dumps)",
+        displayName = "调试",
+        description = "完整调试日志（不含原始数据）",
         color = Color(0xFF4DD0E1), // cyan[300]
     ),
     PERFORMANCE(
-        displayName = "Performance",
-        description = "Performance metrics only",
+        displayName = "性能",
+        description = "仅记录性能指标",
         color = Color(0xFFBA68C8), // purple[300]
     ),
     RX_MESSAGES(
-        displayName = "Adapter Messages",
-        description = "Raw messages (no video/audio)",
+        displayName = "适配器消息",
+        description = "原始消息（不含音视频）",
         color = Color(0xFF7986CB), // indigo[300]
     ),
     VIDEO_ONLY(
-        displayName = "Video Only",
-        description = "Video events + raw video data",
+        displayName = "仅视频",
+        description = "视频事件和原始视频数据",
         color = Color(0xFF81C784), // green[300]
     ),
     AUDIO_ONLY(
-        displayName = "Audio Only",
-        description = "Audio events + raw audio data",
+        displayName = "仅音频",
+        description = "音频事件和原始音频数据",
         color = Color(0xFFFFD54F), // amber[300]
     ),
     PIPELINE_DEBUG(
-        displayName = "Pipeline Debug",
-        description = "Full video + audio pipeline debug",
+        displayName = "音视频链路调试",
+        description = "完整音视频链路调试信息",
         color = Color(0xFFA5D6A7), // green[200]
     ),
     CLUSTER_MEDIA(
-        displayName = "Instrument Panel",
-        description = "Metadata for media and nav",
+        displayName = "仪表盘",
+        description = "媒体和导航元数据",
         color = Color(0xFFBCAAA4), // brown[200]
     ),
     ;

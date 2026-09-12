@@ -155,7 +155,7 @@ internal fun DisplayModeDialog(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "Display Mode",
+                        text = "显示模式",
                         style =
                             MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold,
@@ -170,7 +170,7 @@ internal fun DisplayModeDialog(
                 // reinit (no process restart). Consider rewording to
                 // "Preview changes instantly • Reinitialize to apply".
                 Text(
-                    text = "Preview changes instantly • Restart required to apply",
+                    text = "即时预览效果 · 重启后生效",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colorScheme.onSurfaceVariant,
                 )
@@ -188,8 +188,8 @@ internal fun DisplayModeDialog(
                     // Configuration option card
                     // See ConfigurationOptionCard in AdapterConfigurationDialog.kt:929 (internal).
                     ConfigurationOptionCard(
-                        title = "App Immersion",
-                        description = "Control system UI visibility during projection",
+                        title = "沉浸模式",
+                        description = "设置投屏时系统栏的显示方式",
                         icon = Icons.Default.Layers,
                     ) {
                         // Three mode buttons in a row
@@ -198,28 +198,28 @@ internal fun DisplayModeDialog(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                         ) {
                             DisplayModeButton(
-                                label = "System UI",
+                                label = "显示系统栏",
                                 icon = Icons.Default.FullscreenExit,
                                 isSelected = selectedMode == DisplayMode.SYSTEM_UI_VISIBLE,
                                 onClick = { selectedMode = DisplayMode.SYSTEM_UI_VISIBLE },
                                 modifier = Modifier.weight(1f),
                             )
                             DisplayModeButton(
-                                label = "Hide Status",
+                                label = "隐藏状态栏",
                                 icon = Icons.Default.Layers,
                                 isSelected = selectedMode == DisplayMode.STATUS_BAR_HIDDEN,
                                 onClick = { selectedMode = DisplayMode.STATUS_BAR_HIDDEN },
                                 modifier = Modifier.weight(1f),
                             )
                             DisplayModeButton(
-                                label = "Hide Dock",
+                                label = "隐藏导航栏",
                                 icon = Icons.Default.WebAsset,
                                 isSelected = selectedMode == DisplayMode.NAV_BAR_HIDDEN,
                                 onClick = { selectedMode = DisplayMode.NAV_BAR_HIDDEN },
                                 modifier = Modifier.weight(1f),
                             )
                             DisplayModeButton(
-                                label = "Fullscreen",
+                                label = "全屏",
                                 icon = Icons.Default.Fullscreen,
                                 isSelected = selectedMode == DisplayMode.FULLSCREEN_IMMERSIVE,
                                 onClick = { selectedMode = DisplayMode.FULLSCREEN_IMMERSIVE },
@@ -233,19 +233,19 @@ internal fun DisplayModeDialog(
                             text =
                                 when (selectedMode) {
                                     DisplayMode.SYSTEM_UI_VISIBLE -> {
-                                        "Status bar and navigation always visible. AAOS manages display bounds."
+                                        "始终显示状态栏和导航栏，由车载系统管理显示区域。"
                                     }
 
                                     DisplayMode.STATUS_BAR_HIDDEN -> {
-                                        "Status bar hidden, navigation bar visible. Extra vertical space."
+                                        "隐藏状态栏，保留导航栏，增加顶部显示空间。"
                                     }
 
                                     DisplayMode.NAV_BAR_HIDDEN -> {
-                                        "Navigation bar hidden, status bar visible. Extra bottom space."
+                                        "隐藏导航栏，保留状态栏，增加底部显示空间。"
                                     }
 
                                     DisplayMode.FULLSCREEN_IMMERSIVE -> {
-                                        "All system UI hidden. Swipe edge to temporarily reveal."
+                                        "隐藏所有系统栏，从屏幕边缘滑动可临时显示。"
                                     }
                                 },
                             style = MaterialTheme.typography.bodySmall,
@@ -269,11 +269,11 @@ internal fun DisplayModeDialog(
                         },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Cancel")
+                        Text("取消")
                     }
 
                     // Apply & Restart
-                    // NOTE: Label "Apply & Restart" is stale — the underlying action
+                    // NOTE: Label "应用并重启" is stale — the underlying action
                     // is an in-place session reinit (MainActivity.reinitializeForDisplayMode),
                     // NOT a process restart. Label preserved for user familiarity.
                     Button(
@@ -287,7 +287,7 @@ internal fun DisplayModeDialog(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Apply & Restart")
+                        Text("应用并重启")
                     }
                 }
             }

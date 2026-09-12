@@ -39,6 +39,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.lifecycleScope
 import com.carlink.cluster.ClusterBindingState
 import com.carlink.logging.FileLogManager
 import com.carlink.logging.LogPreset
@@ -49,6 +50,10 @@ import com.carlink.logging.logInfo
 import com.carlink.logging.logWarn
 import com.carlink.media.MediaSessionManager
 import com.carlink.util.LogCallback
+import com.carlink.vehicle.VehicleProjectionController
+import com.carlink.vehicle.VehicleKeyMonitor
+import com.carlink.vehicle.VehicleKeyGestureGate
+import com.carlink.vehicle.VehicleProjectionState
 import com.carlink.util.LogcatKeyEventMonitor
 import com.carlink.util.LogcatMonitorStatus
 import com.carlink.util.WindowMetricsCompat
@@ -323,8 +328,68 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private var vehicleProjection: VehicleProjectionController? = null
+    private var vehicleKeys: VehicleKeyMonitor? = null
+    private val vehicleKeyGate = VehicleKeyGestureGate()
+    private val heldProjectionKeys = mutableMapOf<Int, InputKeyAction>()
+
+    private fun startVehicleIntegration() {
+        if (vehicleProjection == null) {
+            vehicleProjection = VehicleProjectionController(this, this)
+        }
+        if (vehicleKeys == null) {
+            vehicleKeys = VehicleKeyMonitor(
+                this,
+                object : VehicleKeyMonitor.Listener {
+                    override fun onStatus(status: String) {
+                        VehicleProjectionState.keyStatus.value = status
+                    }
+                    override fun onKey(message: String, popup: Boolean) {
+                        VehicleProjectionState.lastKey.value = message
+                    }
+                    override fun onInput(code: Int, action: Int) {
+                        // OneOS is an observer: do not inject unmapped vehicle keys into Android.
+                        if (inputKeyCaptureAction == null && !inputKeyMappingsState.value.containsKey(code) &&
+                            !heldProjectionKeys.containsKey(code) && suppressCapturedKeyUp != code
+                        ) return
+                        if (action == 2) {
+                            if (!vehicleKeyGate.accept(code, action, android.os.SystemClock.elapsedRealtime())) return
+                            handleInputKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, code), false)
+                            handleInputKeyEvent(KeyEvent(KeyEvent.ACTION_UP, code), false)
+                        } else {
+                            dispatchKeyEvent(KeyEvent(action, code))
+                        }
+                    }
+                },
+            )
+            lifecycleScope.launch {
+                VehicleProjectionState.keyReconnect.collect {
+                    if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)) {
+                        vehicleKeys?.start(false)
+                    }
+                }
+            }
+        }
+        vehicleKeys?.start(false)
+        VehicleProjectionState.refresh.value++
+    }
+
+    override fun onPause() {
+        vehicleKeys?.stop()
+        VehicleProjectionState.keyStatus.value = "页面不在前台，按键监听已停止"
+        vehicleKeyGate.clear()
+        cancelInputKeyCapture()
+        heldProjectionKeys.values.distinct().forEach {
+            carlinkManager?.sendInputKeyAction(it, released = true)
+        }
+        heldProjectionKeys.clear()
+        suppressCapturedKeyUp = null
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        startVehicleIntegration()
         logcatReadLogsGrantedState.value =
             ContextCompat.checkSelfPermission(this, Manifest.permission.READ_LOGS) == PackageManager.PERMISSION_GRANTED
         // Restore display mode when returning to app
@@ -338,7 +403,21 @@ class MainActivity : ComponentActivity() {
      * navigation and keyboard input retain their platform behavior.
      */
     @Suppress("RestrictedApi")
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean = handleInputKeyEvent(event, true)
+
+    @Suppress("RestrictedApi")
+    private fun handleInputKeyEvent(event: KeyEvent, filterDuplicates: Boolean): Boolean {
+        val managed = inputKeyCaptureAction != null || inputKeyMappingsState.value.containsKey(event.keyCode) ||
+            suppressCapturedKeyUp == event.keyCode || heldProjectionKeys.containsKey(event.keyCode)
+        if (managed && filterDuplicates && event.action in KeyEvent.ACTION_DOWN..KeyEvent.ACTION_UP &&
+            !vehicleKeyGate.accept(event.keyCode, event.action, android.os.SystemClock.elapsedRealtime())
+        ) return true
+        if (event.action == KeyEvent.ACTION_UP) {
+            heldProjectionKeys.remove(event.keyCode)?.let {
+                carlinkManager?.sendInputKeyAction(it, released = true)
+                return true
+            }
+        }
         if (event.action == KeyEvent.ACTION_UP && suppressCapturedKeyUp == event.keyCode) {
             suppressCapturedKeyUp = null
             return true
@@ -357,11 +436,13 @@ class MainActivity : ComponentActivity() {
         if (action != null) {
             when (event.action) {
                 KeyEvent.ACTION_DOWN -> {
-                    if (event.repeatCount == 0) carlinkManager?.sendInputKeyAction(action)
+                    if (event.repeatCount == 0) {
+                        val sent = carlinkManager?.sendInputKeyAction(action) == true
+                        if (sent && action.releaseCommand != null) heldProjectionKeys[event.keyCode] = action
+                    }
                     return true
                 }
                 KeyEvent.ACTION_UP -> {
-                    if (action.releaseCommand != null) carlinkManager?.sendInputKeyAction(action, released = true)
                     return true
                 }
                 else -> return true
@@ -522,6 +603,10 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        vehicleKeys?.close()
+        vehicleKeys = null
+        vehicleProjection?.close()
+        vehicleProjection = null
         super.onDestroy()
 
         logcatMonitor?.stop()

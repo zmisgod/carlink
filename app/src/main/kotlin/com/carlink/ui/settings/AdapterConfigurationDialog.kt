@@ -352,7 +352,7 @@ fun AdapterConfigurationDialog(
                     )
                     Spacer(modifier = Modifier.width(16.dp))
                     Text(
-                        text = "Adapter Configuration",
+                        text = "适配器设置",
                         style =
                             MaterialTheme.typography.headlineSmall.copy(
                                 fontWeight = FontWeight.Bold,
@@ -368,7 +368,7 @@ fun AdapterConfigurationDialog(
                 // reinit path (no app restart). Only Misc changes (GPS/WiFi/ClusterNav)
                 // actually restart the app. DO NOT edit the string here without product sign-off.
                 Text(
-                    text = "Changes require app restart to apply",
+                    text = "更改需要重启应用后生效",
                     style = MaterialTheme.typography.bodyMedium,
                     color = colorScheme.onSurfaceVariant,
                 )
@@ -382,22 +382,22 @@ fun AdapterConfigurationDialog(
                     Tab(
                         selected = selectedTabIndex == 0,
                         onClick = { selectedTabIndex = 0 },
-                        text = { Text("Audio") },
+                        text = { Text("音频") },
                     )
                     Tab(
                         selected = selectedTabIndex == 1,
                         onClick = { selectedTabIndex = 1 },
-                        text = { Text("Visual") },
+                        text = { Text("画面") },
                     )
                     Tab(
                         selected = selectedTabIndex == 2,
                         onClick = { selectedTabIndex = 2 },
-                        text = { Text("Keys") },
+                        text = { Text("按键") },
                     )
                     Tab(
                         selected = selectedTabIndex == 3,
                         onClick = { selectedTabIndex = 3 },
-                        text = { Text("Misc") },
+                        text = { Text("其他") },
                     )
                 }
 
@@ -416,8 +416,8 @@ fun AdapterConfigurationDialog(
                         0 -> {
                             // Audio Source Configuration Option
                             ConfigurationOptionCard(
-                                title = "Audio Source",
-                                description = "Select how audio is routed from your phone",
+                                title = "音频来源",
+                                description = "选择手机音频的播放方式",
                                 icon = Icons.AutoMirrored.Filled.VolumeUp,
                             ) {
                                 // Audio source selection buttons
@@ -427,7 +427,7 @@ fun AdapterConfigurationDialog(
                                 ) {
                                     // Bluetooth button
                                     AudioSourceButton(
-                                        label = "Bluetooth",
+                                        label = "蓝牙",
                                         icon = Icons.Default.Bluetooth,
                                         isSelected = selectedAudioSource == AudioSourceConfig.BLUETOOTH,
                                         onClick = { selectedAudioSource = AudioSourceConfig.BLUETOOTH },
@@ -436,7 +436,7 @@ fun AdapterConfigurationDialog(
 
                                     // Adapter button
                                     AudioSourceButton(
-                                        label = "Adapter",
+                                        label = "适配器",
                                         icon = Icons.Default.Usb,
                                         isSelected = selectedAudioSource == AudioSourceConfig.ADAPTER,
                                         onClick = { selectedAudioSource = AudioSourceConfig.ADAPTER },
@@ -449,8 +449,8 @@ fun AdapterConfigurationDialog(
                                 Text(
                                     text =
                                         when (selectedAudioSource) {
-                                            AudioSourceConfig.BLUETOOTH -> "Audio via phone Bluetooth to car stereo"
-                                            AudioSourceConfig.ADAPTER -> "Audio via USB through this app"
+                                            AudioSourceConfig.BLUETOOTH -> "手机通过蓝牙连接车载音响"
+                                            AudioSourceConfig.ADAPTER -> "通过 USB 和本应用播放音频"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -459,8 +459,8 @@ fun AdapterConfigurationDialog(
 
                             // Microphone Source Configuration
                             ConfigurationOptionCard(
-                                title = "Microphone Source",
-                                description = "Select which microphone to use for voice input",
+                                title = "麦克风来源",
+                                description = "选择语音输入使用的麦克风",
                                 icon = Icons.Default.Mic,
                             ) {
                                 Row(
@@ -468,14 +468,14 @@ fun AdapterConfigurationDialog(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     AudioSourceButton(
-                                        label = "Radio",
+                                        label = "车机",
                                         icon = Icons.Default.Radio,
                                         isSelected = selectedMicSource == MicSourceConfig.APP,
                                         onClick = { selectedMicSource = MicSourceConfig.APP },
                                         modifier = Modifier.weight(1f),
                                     )
                                     AudioSourceButton(
-                                        label = "Phone",
+                                        label = "手机",
                                         icon = Icons.Default.PhoneAndroid,
                                         isSelected = selectedMicSource == MicSourceConfig.PHONE,
                                         onClick = { selectedMicSource = MicSourceConfig.PHONE },
@@ -486,13 +486,15 @@ fun AdapterConfigurationDialog(
                                 Text(
                                     text =
                                         when (selectedMicSource) {
-                                            MicSourceConfig.APP -> "This device captures mic input via Android/OS"
-                                            MicSourceConfig.PHONE -> "The connected phone captures voice input"
+                                            MicSourceConfig.APP -> "通过车机系统采集麦克风声音"
+                                            MicSourceConfig.PHONE -> "由连接的手机采集语音"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
                                 )
                             }
+
+                            com.carlink.audio.AudioRoutingSettings(carlinkManager)
 
                             // Call Quality — UI removed (not the whole feature).
                             // VESTIGIAL / UI-DEAD: CallQualityConfig enum, setter/getter, ConfigKey,
@@ -504,8 +506,8 @@ fun AdapterConfigurationDialog(
 
                             // Media Delay Configuration
                             ConfigurationOptionCard(
-                                title = "Media Delay",
-                                description = "Audio buffer size on adapter",
+                                title = "媒体延迟",
+                                description = "适配器音频缓冲区大小",
                                 icon = Icons.Default.Timer,
                             ) {
                                 Row(
@@ -513,28 +515,28 @@ fun AdapterConfigurationDialog(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                 ) {
                                     AudioSourceButton(
-                                        label = "Low",
+                                        label = "低",
                                         icon = Icons.Default.Timer,
                                         isSelected = selectedMediaDelay == MediaDelayConfig.LOW,
                                         onClick = { selectedMediaDelay = MediaDelayConfig.LOW },
                                         modifier = Modifier.weight(1f),
                                     )
                                     AudioSourceButton(
-                                        label = "Medium",
+                                        label = "中",
                                         icon = Icons.Default.Timer,
                                         isSelected = selectedMediaDelay == MediaDelayConfig.MEDIUM,
                                         onClick = { selectedMediaDelay = MediaDelayConfig.MEDIUM },
                                         modifier = Modifier.weight(1f),
                                     )
                                     AudioSourceButton(
-                                        label = "Standard",
+                                        label = "标准",
                                         icon = Icons.Default.Timer,
                                         isSelected = selectedMediaDelay == MediaDelayConfig.STANDARD,
                                         onClick = { selectedMediaDelay = MediaDelayConfig.STANDARD },
                                         modifier = Modifier.weight(1f),
                                     )
                                     AudioSourceButton(
-                                        label = "High",
+                                        label = "高",
                                         icon = Icons.Default.Timer,
                                         isSelected = selectedMediaDelay == MediaDelayConfig.HIGH,
                                         onClick = { selectedMediaDelay = MediaDelayConfig.HIGH },
@@ -570,16 +572,16 @@ fun AdapterConfigurationDialog(
                             // init (version bump or cold start). User sees the toggle move
                             // but no visible effect. Do NOT fix here — fix in the serializer.
                             ConfigurationOptionCard(
-                                title = "Video Resolution",
-                                description = "Select resolution for CarPlay. Android Auto not supported.",
+                                title = "画面分辨率",
+                                description = "选择 CarPlay 分辨率，Android Auto 不支持此设置。",
                                 icon = Icons.Default.AspectRatio,
                             ) {
                                 // Auto option button
                                 val autoLabel =
                                     if (usableWidth > 0 && usableHeight > 0) {
-                                        "Auto (${usableWidth}x$usableHeight)"
+                                        "自动（${usableWidth}x$usableHeight）"
                                     } else {
-                                        "Auto"
+                                        "自动"
                                     }
 
                                 Column(
@@ -632,9 +634,9 @@ fun AdapterConfigurationDialog(
                                 Text(
                                     text =
                                         if (selectedVideoResolution.isAuto) {
-                                            "Uses detected display resolution"
+                                            "使用检测到的屏幕分辨率"
                                         } else {
-                                            "Lower resolutions reduce GPU load"
+                                            "降低分辨率可减轻 GPU 负载"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -644,7 +646,7 @@ fun AdapterConfigurationDialog(
                                 if (!selectedVideoResolution.isAuto && selectedVideoResolution.height < 720) {
                                     Spacer(modifier = Modifier.height(4.dp))
                                     Text(
-                                        text = "Note: Android Auto will use 800x480 at this resolution",
+                                        text = "提示：此分辨率下 Android Auto 将使用 800x480",
                                         style = MaterialTheme.typography.bodySmall,
                                         color = colorScheme.error,
                                     )
@@ -657,8 +659,8 @@ fun AdapterConfigurationDialog(
                             // reinit persists the new value to DataStore without pushing it
                             // to the adapter until a FULL init. See HAZARD above for details.
                             ConfigurationOptionCard(
-                                title = "Frame Rate",
-                                description = "FPS for CarPlay/Android Auto projection",
+                                title = "帧率",
+                                description = "CarPlay / Android Auto 投屏帧率",
                                 icon = Icons.Default.Speed,
                             ) {
                                 Row(
@@ -684,8 +686,8 @@ fun AdapterConfigurationDialog(
                                 Text(
                                     text =
                                         when (selectedFps) {
-                                            FpsConfig.FPS_30 -> "Some Jitter, Lower overhead"
-                                            FpsConfig.FPS_60 -> "Smoother animations, More Processing (Default)"
+                                            FpsConfig.FPS_30 -> "可能略有卡顿，资源占用较低"
+                                            FpsConfig.FPS_60 -> "动画更流畅，资源占用较高（默认）"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -694,8 +696,8 @@ fun AdapterConfigurationDialog(
 
                             // Hand Drive Mode Configuration
                             ConfigurationOptionCard(
-                                title = "Drive Side",
-                                description = "Sets which side the Projection dock appears on.",
+                                title = "驾驶位方向",
+                                description = "设置投屏快捷栏显示在哪一侧。",
                                 icon = Icons.Default.DirectionsCar,
                             ) {
                                 Row(
@@ -703,14 +705,14 @@ fun AdapterConfigurationDialog(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     AudioSourceButton(
-                                        label = "Left (LHD)",
+                                        label = "左舵",
                                         icon = Icons.Default.DirectionsCar,
                                         isSelected = selectedHandDrive == HandDriveConfig.LEFT,
                                         onClick = { selectedHandDrive = HandDriveConfig.LEFT },
                                         modifier = Modifier.weight(1f),
                                     )
                                     AudioSourceButton(
-                                        label = "Right (RHD)",
+                                        label = "右舵",
                                         icon = Icons.Default.DirectionsCar,
                                         isSelected = selectedHandDrive == HandDriveConfig.RIGHT,
                                         onClick = { selectedHandDrive = HandDriveConfig.RIGHT },
@@ -720,17 +722,17 @@ fun AdapterConfigurationDialog(
                                 Spacer(modifier = Modifier.height(8.dp))
                                 // HAZARD — PLACEHOLDER COPY shipping to end users.
                                 // Both strings are ambiguous/incorrect:
-                                //   LEFT  -> "Driving on the Right Side"  (LHD, but the copy
+                                //   LEFT  -> "靠右行驶"  (LHD, but the copy
                                 //           reads as a location hint rather than LHD label)
-                                //   RIGHT -> "Driving on the wrong side"  (joke placeholder)
+                                //   RIGHT -> "靠左行驶"  (joke placeholder)
                                 // These must be replaced with proper user-facing copy before
                                 // release. Do NOT change the strings here without product
                                 // sign-off; only flagged for visibility.
                                 Text(
                                     text =
                                         when (selectedHandDrive) {
-                                            HandDriveConfig.LEFT -> "Driving on the Right Side"
-                                            HandDriveConfig.RIGHT -> "Driving on the wrong side"
+                                            HandDriveConfig.LEFT -> "靠右行驶"
+                                            HandDriveConfig.RIGHT -> "靠左行驶"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -741,8 +743,8 @@ fun AdapterConfigurationDialog(
                             // 120/180/256px icon set plus /etc/oem_icon.png during
                             // the next session reinit.
                             ConfigurationOptionCard(
-                                title = "CarPlay Home Icon",
-                                description = "Use a custom square image for the CarPlay home tile.",
+                                title = "CarPlay 主屏图标",
+                                description = "使用自定义方形图片作为 CarPlay 主屏图标。",
                                 icon = Icons.Default.Home,
                             ) {
                                 Row(
@@ -753,17 +755,17 @@ fun AdapterConfigurationDialog(
                                     if (customIconPreview != null) {
                                         Image(
                                             bitmap = customIconPreview,
-                                            contentDescription = "Selected CarPlay home icon",
+                                            contentDescription = "已选择的 CarPlay 主屏图标",
                                             modifier = Modifier.size(72.dp).aspectRatio(1f),
                                         )
                                     }
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = if (selectedCustomHomeIcon == null) "Bundled icon" else "Custom icon selected",
+                                            text = if (selectedCustomHomeIcon == null) "内置图标" else "已选择自定义图标",
                                             style = MaterialTheme.typography.bodyMedium,
                                         )
                                         Text(
-                                            text = "PNG or JPEG, up to 4 MB",
+                                            text = "PNG 或 JPEG 图片，最大 4 MB",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = colorScheme.onSurfaceVariant,
                                         )
@@ -771,15 +773,15 @@ fun AdapterConfigurationDialog(
                                     FilledTonalButton(
                                         onClick = { iconPicker.launch(arrayOf("image/png", "image/jpeg", "image/*")) },
                                     ) {
-                                        Icon(Icons.Default.Upload, contentDescription = "Choose image")
+                                        Icon(Icons.Default.Upload, contentDescription = "选择图片")
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Choose")
+                                        Text("选择")
                                     }
                                     if (selectedCustomHomeIcon != null) {
                                         IconButton(
                                             onClick = { selectedCustomHomeIcon = null },
                                         ) {
-                                            Icon(Icons.Default.Close, contentDescription = "Use bundled icon")
+                                            Icon(Icons.Default.Close, contentDescription = "使用内置图标")
                                         }
                                     }
                                 }
@@ -788,6 +790,7 @@ fun AdapterConfigurationDialog(
 
                         // ===== Keys Tab =====
                         2 -> {
+                            com.carlink.vehicle.VehicleIntegrationSettings()
                             InputKeyMappingCard(
                                 mappings = inputKeyMappings,
                                 capturingAction = inputKeyCaptureAction,
@@ -809,8 +812,8 @@ fun AdapterConfigurationDialog(
 
                             // GPS Forwarding Configuration
                             ConfigurationOptionCard(
-                                title = "GPS Forwarding",
-                                description = "Forward vehicle GPS. iOS does not use for NAVI",
+                                title = "GPS 转发",
+                                description = "转发车辆 GPS，iOS 不会将其用于导航",
                                 icon = Icons.Default.LocationOn,
                             ) {
                                 Row(
@@ -818,14 +821,14 @@ fun AdapterConfigurationDialog(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     AudioSourceButton(
-                                        label = "Off",
+                                        label = "关闭",
                                         icon = Icons.Default.LocationOn,
                                         isSelected = !selectedGpsForwarding,
                                         onClick = { selectedGpsForwarding = false },
                                         modifier = Modifier.weight(1f),
                                     )
                                     AudioSourceButton(
-                                        label = "On",
+                                        label = "开启",
                                         icon = Icons.Default.LocationOn,
                                         isSelected = selectedGpsForwarding,
                                         onClick = { selectedGpsForwarding = true },
@@ -836,9 +839,9 @@ fun AdapterConfigurationDialog(
                                 Text(
                                     text =
                                         if (selectedGpsForwarding) {
-                                            "Enabled — vehicle GPS forwarded adapter"
+                                            "已开启：将车辆 GPS 转发到适配器"
                                         } else {
-                                            "Disabled — phone uses its own GPS"
+                                            "已关闭：手机使用自身 GPS"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -847,8 +850,8 @@ fun AdapterConfigurationDialog(
 
                             // Cluster Navigation Configuration
                             ConfigurationOptionCard(
-                                title = "Cluster Navigation",
-                                description = "Show Projection turn-by-turn on Instrument Cluster.",
+                                title = "仪表导航",
+                                description = "在仪表中显示投屏导航的转向指引。",
                                 icon = Icons.Default.Map,
                             ) {
                                 Row(
@@ -856,14 +859,14 @@ fun AdapterConfigurationDialog(
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
                                     AudioSourceButton(
-                                        label = "Off",
+                                        label = "关闭",
                                         icon = Icons.Default.Map,
                                         isSelected = !selectedClusterNavigation,
                                         onClick = { selectedClusterNavigation = false },
                                         modifier = Modifier.weight(1f),
                                     )
                                     AudioSourceButton(
-                                        label = "Enabled",
+                                        label = "已启用",
                                         icon = Icons.Default.Map,
                                         isSelected = selectedClusterNavigation,
                                         onClick = { selectedClusterNavigation = true },
@@ -874,9 +877,9 @@ fun AdapterConfigurationDialog(
                                 Text(
                                     text =
                                         if (selectedClusterNavigation) {
-                                            "Enabled — Projection Navigation shown on Cluster (requires restart)"
+                                            "已开启：在仪表显示投屏导航（需重启）"
                                         } else {
-                                            "Disabled — other navigation apps keep the cluster"
+                                            "已关闭：仪表由其他导航应用使用"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -885,8 +888,8 @@ fun AdapterConfigurationDialog(
 
                             // WiFi Band Configuration
                             ConfigurationOptionCard(
-                                title = "WiFi Band",
-                                description = "Wireless band Adapter should use.",
+                                title = "Wi-Fi 频段",
+                                description = "选择适配器使用的无线频段。",
                                 icon = Icons.Default.Wifi,
                             ) {
                                 Row(
@@ -912,8 +915,8 @@ fun AdapterConfigurationDialog(
                                 Text(
                                     text =
                                         when (selectedWifiBand) {
-                                            WiFiBandConfig.BAND_5GHZ -> "Better speed, less interference (recommended)"
-                                            WiFiBandConfig.BAND_24GHZ -> "Fallback (Slow NOT recommended)"
+                                            WiFiBandConfig.BAND_5GHZ -> "速度更快，干扰更少（推荐）"
+                                            WiFiBandConfig.BAND_24GHZ -> "备用选项（速度较慢，不推荐）"
                                         },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = colorScheme.primary,
@@ -942,7 +945,7 @@ fun AdapterConfigurationDialog(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Reboot Adapter",
+                                    text = "重启适配器",
                                     style = MaterialTheme.typography.titleMedium,
                                 )
                             }
@@ -958,9 +961,9 @@ fun AdapterConfigurationDialog(
                                             tint = colorScheme.tertiary,
                                         )
                                     },
-                                    title = { Text("Reboot Adapter?") },
+                                    title = { Text("重启适配器？") },
                                     text = {
-                                        Text("The adapter will restart. It will reconnect automatically in about 15 seconds.")
+                                        Text("适配器将重启，约 15 秒后自动重新连接。")
                                     },
                                     confirmButton = {
                                         TextButton(
@@ -972,12 +975,12 @@ fun AdapterConfigurationDialog(
                                                 }
                                             },
                                         ) {
-                                            Text("Reboot", color = colorScheme.tertiary)
+                                            Text("重启", color = colorScheme.tertiary)
                                         }
                                     },
                                     dismissButton = {
                                         TextButton(onClick = { showRebootDialog = false }) {
-                                            Text("Cancel")
+                                            Text("取消")
                                         }
                                     },
                                 )
@@ -1001,7 +1004,7 @@ fun AdapterConfigurationDialog(
                         },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Cancel")
+                        Text("取消")
                     }
 
                     // Default button.
@@ -1027,7 +1030,7 @@ fun AdapterConfigurationDialog(
                         },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Text("Default")
+                        Text("恢复默认")
                     }
 
                     // Apply button — tiered restart strategy:
@@ -1148,7 +1151,7 @@ fun AdapterConfigurationDialog(
                             modifier = Modifier.size(18.dp),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text(if (miscChanged) "Apply & Restart" else "Apply")
+                        Text(if (miscChanged) "应用并重启" else "应用")
                     }
                 }
             }
@@ -1166,8 +1169,8 @@ private fun InputKeyMappingCard(
 ) {
     val colorScheme = MaterialTheme.colorScheme
     ConfigurationOptionCard(
-        title = "External Key Mapping",
-        description = "Assign external input keys to projection controls.",
+        title = "外接按键映射",
+        description = "将外接按键绑定到投屏控制操作。",
         icon = Icons.Default.SettingsInputComponent,
     ) {
         InputKeyAction.entries.forEach { action ->
@@ -1181,7 +1184,7 @@ private fun InputKeyMappingCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(action.label, style = MaterialTheme.typography.bodyMedium)
                     Text(
-                        text = mappedKeyCode?.let { keyCodeLabel(it) } ?: "Not mapped",
+                        text = mappedKeyCode?.let { keyCodeLabel(it) } ?: "未绑定",
                         style = MaterialTheme.typography.bodySmall,
                         color = if (mappedKeyCode == null) colorScheme.onSurfaceVariant else colorScheme.primary,
                     )
@@ -1191,11 +1194,11 @@ private fun InputKeyMappingCard(
                         if (isCapturing) onCancelCapture() else onStartCapture(action)
                     },
                 ) {
-                    Text(if (isCapturing) "Cancel" else "Capture")
+                    Text(if (isCapturing) "取消" else "识别按键")
                 }
                 if (mappedKeyCode != null && !isCapturing) {
                     TextButton(onClick = { onRemoveMapping(action) }) {
-                        Text("Clear")
+                        Text("清除")
                     }
                 }
             }
@@ -1203,7 +1206,7 @@ private fun InputKeyMappingCard(
         if (capturingAction != null) {
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Press a key for ${capturingAction.label}",
+                text = "请按下用于“${capturingAction.label}”的按键",
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.primary,
             )
@@ -1227,8 +1230,8 @@ private fun LogcatKeyMappingCard(
     val canAdd = isValidLogcatPattern(pattern)
 
     ConfigurationOptionCard(
-        title = "Logcat Key Triggers",
-        description = "Match a vehicle log line and run one projection action.",
+        title = "日志按键触发器",
+        description = "匹配车辆日志，触发对应的投屏操作。",
         icon = Icons.Default.Terminal,
     ) {
         Row(
@@ -1237,13 +1240,13 @@ private fun LogcatKeyMappingCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "Monitor: ${monitorStatus.label}",
+                text = "监听状态：${monitorStatus.label}",
                 style = MaterialTheme.typography.bodySmall,
                 color = if (monitorStatus == LogcatMonitorStatus.ERROR) colorScheme.error else colorScheme.primary,
             )
             if (mappings.isNotEmpty() && !readLogsGranted) {
                 Text(
-                    text = "Limited",
+                    text = "权限受限",
                     style = MaterialTheme.typography.bodySmall,
                     color = colorScheme.error,
                 )
@@ -1251,7 +1254,7 @@ private fun LogcatKeyMappingCard(
         }
         if (!readLogsGranted) {
             Text(
-                text = "System log access is unavailable for this install; privileged or adb-granted READ_LOGS is required for vehicle logs.",
+                text = "当前应用无法读取系统日志。读取车辆日志需要系统特权或通过 adb 授予 READ_LOGS 权限。",
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.error,
             )
@@ -1261,8 +1264,8 @@ private fun LogcatKeyMappingCard(
             onValueChange = { pattern = it },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            label = { Text("Log text") },
-            supportingText = { Text("Case-insensitive contains; use % or * for wildcards") },
+            label = { Text("日志文本") },
+            supportingText = { Text("包含匹配，不区分大小写；可使用 % 或 * 作为通配符") },
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -1321,13 +1324,13 @@ private fun LogcatKeyMappingCard(
         }
         if (selectedMode == LogcatTriggerMode.LOCAL_ONLY) {
             Text(
-                text = "Local only records the matched action and sends no command to CarPlay or Android media.",
+                text = "仅在本地记录匹配的操作，不向 CarPlay 或安卓媒体发送指令。",
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurfaceVariant,
             )
         } else if (selectedAction == InputKeyAction.PAUSE) {
             Text(
-                text = "Play / pause is sent only through the CarPlay adapter command; no Android media key is generated.",
+                text = "播放 / 暂停通过 CarPlay 适配器指令发送，不生成安卓媒体按键。",
                 style = MaterialTheme.typography.bodySmall,
                 color = colorScheme.onSurfaceVariant,
             )
@@ -1340,7 +1343,7 @@ private fun LogcatKeyMappingCard(
             modifier = Modifier.fillMaxWidth(),
             enabled = canAdd,
         ) {
-            Text("Add trigger")
+            Text("添加触发器")
         }
 
         mappings.forEach { mapping ->
@@ -1365,7 +1368,7 @@ private fun LogcatKeyMappingCard(
                     )
                 }
                 IconButton(onClick = { onRemoveMapping(mapping.id) }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Remove trigger")
+                    Icon(Icons.Default.Delete, contentDescription = "删除触发器")
                 }
             }
         }
@@ -1373,7 +1376,7 @@ private fun LogcatKeyMappingCard(
 }
 
 private fun keyCodeLabel(keyCode: Int): String =
-    android.view.KeyEvent.keyCodeToString(keyCode).removePrefix("KEYCODE_")
+    com.carlink.vehicle.VehicleKeyNames.name(keyCode) + " ($keyCode)"
 
 private fun decodeIconPreview(bytes: ByteArray): ImageBitmap? {
     val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }

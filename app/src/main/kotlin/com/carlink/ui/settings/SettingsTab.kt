@@ -26,9 +26,9 @@ enum class SettingsTab(
     val icon: ImageVector,
 ) {
     // Order determines tab display order in the navigation rail.
-    PHONES("Phones", Icons.Default.PhoneAndroid),
-    CONTROL("Control", Icons.Default.Settings),
-    LOGS("Logs", Icons.AutoMirrored.Filled.Article),
+    PHONES("手机", Icons.Default.PhoneAndroid),
+    CONTROL("控制", Icons.Default.Settings),
+    LOGS("日志", Icons.AutoMirrored.Filled.Article),
     ;
 
     companion object {

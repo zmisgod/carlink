@@ -142,7 +142,7 @@ fun SettingsScreen(
                 // tag = "UI". This call omits it and falls back to the default tag. Flagged for
                 // a future fix; left as-is to keep this pass comment-only.
                 logWarn("[SettingsScreen] Failed to get package info: ${e.message}")
-                "Unknown"
+                "未知"
             }
         }
 
@@ -177,7 +177,7 @@ fun SettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back",
+                            contentDescription = "返回",
                             modifier = Modifier.size(AutomotiveDimens.IconSize),
                         )
                     }
@@ -229,7 +229,7 @@ fun SettingsScreen(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
-                            contentDescription = "Close App",
+                            contentDescription = "退出应用",
                             modifier = Modifier.size(AutomotiveDimens.IconSize),
                             tint = colorScheme.error,
                         )
@@ -238,8 +238,8 @@ fun SettingsScreen(
                     if (showCloseConfirm) {
                         AlertDialog(
                             onDismissRequest = { showCloseConfirm = false },
-                            title = { Text("Close App?") },
-                            text = { Text("This will stop all connections and close the app.") },
+                            title = { Text("退出应用？") },
+                            text = { Text("将断开所有连接并退出应用。") },
                             confirmButton = {
                                 TextButton(
                                     onClick = {
@@ -256,12 +256,12 @@ fun SettingsScreen(
                                         (context as? android.app.Activity)?.finishAffinity()
                                     },
                                 ) {
-                                    Text("Close", color = colorScheme.error)
+                                    Text("退出", color = colorScheme.error)
                                 }
                             },
                             dismissButton = {
                                 TextButton(onClick = { showCloseConfirm = false }) {
-                                    Text("Cancel")
+                                    Text("取消")
                                 }
                             },
                         )
@@ -270,7 +270,7 @@ fun SettingsScreen(
                     Spacer(modifier = Modifier.height(8.dp))
 
                     Text(
-                        text = "Version:",
+                        text = "版本：",
                         style = MaterialTheme.typography.bodySmall,
                         color = colorScheme.onSurfaceVariant,
                     )
@@ -391,7 +391,7 @@ private fun ControlTabContent(
     // lifetime of this composition. If the user enables/disables Cluster Navigation in the
     // AdapterConfigurationDialog (L529-540) while the Control tab is still composed, this
     // snapshot does not refresh — so the Reset Cluster button at L436 may branch on a stale
-    // value and incorrectly show the "Cluster Navigation Off" dialog after a just-enabled
+    // value and incorrectly show the "仪表导航未开启" dialog after a just-enabled
     // toggle (or, conversely, proceed to the reset-confirm after a just-disabled toggle).
     //
     // FIX: switch to a reactive flow, mirroring `displayModeFlow` on L293:
@@ -429,7 +429,7 @@ private fun ControlTabContent(
                 // Adapter Configuration Card (includes device control actions)
                 ControlCard(
                     modifier = Modifier.weight(1f),
-                    title = "Adapter Configuration",
+                    title = "适配器设置",
                     icon = Icons.Default.SettingsInputComponent,
                 ) {
                     // Configure button
@@ -440,12 +440,12 @@ private fun ControlTabContent(
                     ) {
                         Icon(
                             imageVector = Icons.Default.Settings,
-                            contentDescription = "Configure adapter",
+                            contentDescription = "配置适配器",
                             modifier = Modifier.size(AutomotiveDimens.IconSize),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Configure",
+                            text = "设置",
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -455,7 +455,7 @@ private fun ControlTabContent(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ControlButton(
-                        label = "Disconnect Phone",
+                        label = "断开手机",
                         icon = Icons.Default.PhoneDisabled,
                         severity = ButtonSeverity.WARNING,
                         enabled = isDeviceConnected && !isProcessing,
@@ -469,7 +469,7 @@ private fun ControlTabContent(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ControlButton(
-                        label = "Disconnect Adapter",
+                        label = "断开适配器",
                         icon = Icons.Default.PowerOff,
                         severity = ButtonSeverity.DESTRUCTIVE,
                         enabled = isDeviceConnected && !isProcessing,
@@ -484,7 +484,7 @@ private fun ControlTabContent(
                 // App Control Card
                 ControlCard(
                     modifier = Modifier.weight(1f),
-                    title = "App Control",
+                    title = "应用控制",
                     icon = Icons.Default.DisplaySettings,
                 ) {
                     FilledTonalButton(
@@ -500,12 +500,12 @@ private fun ControlTabContent(
                                     DisplayMode.NAV_BAR_HIDDEN -> Icons.Default.WebAsset
                                     DisplayMode.FULLSCREEN_IMMERSIVE -> Icons.Default.Fullscreen
                                 },
-                            contentDescription = "Configure display mode",
+                            contentDescription = "设置显示模式",
                             modifier = Modifier.size(AutomotiveDimens.IconSize),
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "Display Mode",
+                            text = "显示模式",
                             style = MaterialTheme.typography.titleMedium,
                             maxLines = 1,
                             overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
@@ -519,7 +519,7 @@ private fun ControlTabContent(
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         ControlButton(
-                            label = "Reset Decoder",
+                            label = "重置解码器",
                             icon = Icons.Default.VideoSettings,
                             severity = ButtonSeverity.WARNING,
                             enabled = !isProcessing,
@@ -532,7 +532,7 @@ private fun ControlTabContent(
                         )
 
                         ControlButton(
-                            label = "Reset Cluster",
+                            label = "重置仪表",
                             icon = Icons.Default.Speed,
                             severity = ButtonSeverity.WARNING,
                             enabled = !isProcessing,
@@ -551,7 +551,7 @@ private fun ControlTabContent(
                     Spacer(modifier = Modifier.height(12.dp))
 
                     ControlButton(
-                        label = "Reset Connection",
+                        label = "重置连接",
                         icon = Icons.Default.Usb,
                         severity = ButtonSeverity.DESTRUCTIVE,
                         enabled = isDeviceConnected && !isProcessing,
@@ -584,9 +584,9 @@ private fun ControlTabContent(
                     tint = colorScheme.tertiary,
                 )
             },
-            title = { Text("Reset Cluster?") },
+            title = { Text("重置仪表？") },
             text = {
-                Text("The cluster display will be reset. Helper App will reload and take focus momentarily.")
+                Text("将重置仪表显示。辅助应用会重新加载并短暂切换到前台。")
             },
             confirmButton = {
                 TextButton(
@@ -596,12 +596,12 @@ private fun ControlTabContent(
                         onResetCluster()
                     },
                 ) {
-                    Text("Reset", color = colorScheme.tertiary)
+                    Text("重置", color = colorScheme.tertiary)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showResetClusterDialog = false }) {
-                    Text("Cancel")
+                    Text("取消")
                 }
             },
         )
@@ -618,13 +618,13 @@ private fun ControlTabContent(
                     tint = colorScheme.onSurfaceVariant,
                 )
             },
-            title = { Text("Cluster Navigation Off") },
+            title = { Text("仪表导航未开启") },
             text = {
-                Text("Cluster Navigation is disabled. Enable it in Adapter Configuration to use this feature.")
+                Text("请先在适配器设置中开启仪表导航，再使用此功能。")
             },
             confirmButton = {
                 TextButton(onClick = { showClusterNavOffDialog = false }) {
-                    Text("OK")
+                    Text("确定")
                 }
             },
         )
@@ -686,7 +686,7 @@ private fun ControlTabContent(
 
 /**
  * Material 3 elevated card used as a titled container for groups of control actions
- * (e.g. "Adapter Configuration", "App Control").
+ * (e.g. "适配器设置", "应用控制").
  *
  * Renders a leading [icon] + [title] header row, a fixed-height spacer, and then the caller's
  * [content] in a [ColumnScope]. Callers are responsible for laying out their own buttons and

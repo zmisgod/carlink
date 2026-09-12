@@ -225,9 +225,9 @@ enum class InputKeyAction(
     val callCommand: CommandMapping? = null,
     val releaseCommand: CommandMapping? = null,
 ) {
-    NEXT("Next track / answer call", CommandMapping.NEXT, CommandMapping.PHONE_ANSWER),
-    PREVIOUS("Previous track / hang up", CommandMapping.PREV, CommandMapping.PHONE_HANG_UP),
-    PAUSE("Play / pause", CommandMapping.PLAY_PAUSE),
+    NEXT("下一曲 / 接听电话", CommandMapping.NEXT, CommandMapping.PHONE_ANSWER),
+    PREVIOUS("上一曲 / 挂断电话", CommandMapping.PREV, CommandMapping.PHONE_HANG_UP),
+    PAUSE("播放 / 暂停", CommandMapping.PLAY_PAUSE),
     SIRI("Siri", CommandMapping.SIRI, releaseCommand = CommandMapping.SIRI_BUTTON_UP),
 }
 

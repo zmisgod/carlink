@@ -12,8 +12,8 @@ import java.util.UUID
 enum class LogcatTriggerMode(
     val label: String,
 ) {
-    CARPLAY_ONLY("CarPlay only"),
-    LOCAL_ONLY("Local only (no car command)"),
+    CARPLAY_ONLY("仅控制 CarPlay"),
+    LOCAL_ONLY("仅本地记录（不发送车机指令）"),
 }
 
 /** A case-insensitive logcat line matcher mapped to one projection action. */
@@ -66,7 +66,7 @@ class LogcatKeyMappingPreference private constructor(context: Context) {
     ): LogcatKeyMapping {
         val normalizedPattern = pattern.trim()
         require(isValidLogcatPattern(normalizedPattern)) {
-            "Logcat pattern must contain at least one non-wildcard character"
+            "日志匹配规则必须至少包含一个非通配符字符"
         }
 
         val mapping =

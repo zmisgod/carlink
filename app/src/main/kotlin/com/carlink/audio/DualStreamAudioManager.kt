@@ -216,11 +216,30 @@ class DualStreamAudioManager(
     @Volatile private var navStopped = false
 
     private val lock = Any()
+    private val routePreferences = AudioRoutePreferences.store(context)
+    private val routeListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+        if (key !in setOf(AudioRoutePreferences.MEDIA_OUTPUT, AudioRoutePreferences.VOICE_OUTPUT, AudioRoutePreferences.RINGTONE_OUTPUT, AudioRoutePreferences.NAVIGATION_OUTPUT, AudioRoutePreferences.OUTPUT_CHANNEL)) {
+            return@OnSharedPreferenceChangeListener
+        }
+        synchronized(lock) {
+            listOfNotNull(mediaSlot, siriSlot, phoneCallSlot, alertSlot).forEach { slot ->
+                slot.track?.let { track ->
+                    AudioDiagnosticsState.output.value = AudioRoutePreferences.applyOutput(context, track, slot.purpose)
+                    AudioRoutePreferences.volume(context, track, if (slot.purpose == StreamPurpose.MEDIA) mediaVolume * minOf(if (isDucked) duckLevel else 1f, focusDuckLevel) else 1f)
+                }
+            }
+            navTrack?.let {
+                AudioRoutePreferences.applyOutput(context, it, StreamPurpose.NAVIGATION)
+                AudioRoutePreferences.volume(context, it, navVolume)
+            }
+        }
+    }
 
     /**
      * Initialize the audio manager and start playback thread.
      */
     fun initialize(): Boolean {
+        routePreferences.registerOnSharedPreferenceChangeListener(routeListener)
         synchronized(lock) {
             if (isRunning.get()) {
                 log("[AUDIO] Already initialized")
@@ -485,7 +504,7 @@ class DualStreamAudioManager(
     private fun applyEffectiveVolume() {
         val adapterFactor = if (isDucked) duckLevel else 1.0f
         val effectiveVolume = mediaVolume * minOf(adapterFactor, focusDuckLevel)
-        mediaSlot?.track?.setVolume(effectiveVolume)
+        mediaSlot?.track?.let { AudioRoutePreferences.volume(context, it, effectiveVolume) }
         // Non-media purpose slots (PHONE_CALL, SIRI, ALERT) stay at full volume
         logDebug(
             "[AUDIO_FOCUS] Volume: effective=${(effectiveVolume * 100).toInt()}% " +
@@ -561,23 +580,7 @@ class DualStreamAudioManager(
         }
     }
 
-    private fun purposeToAttributes(purpose: StreamPurpose): Pair<Int, Int> =
-        when (purpose) {
-            StreamPurpose.MEDIA -> Pair(AudioAttributes.USAGE_MEDIA, AudioAttributes.CONTENT_TYPE_MUSIC)
-            StreamPurpose.PHONE_CALL -> Pair(AudioAttributes.USAGE_VOICE_COMMUNICATION, AudioAttributes.CONTENT_TYPE_SPEECH)
-            StreamPurpose.SIRI -> Pair(AudioAttributes.USAGE_ASSISTANT, AudioAttributes.CONTENT_TYPE_SPEECH)
-            // ALERT (incoming-call ringtone): try USAGE_VOICE_COMMUNICATION_SIGNALLING
-            // to attempt routing onto BUS_CALL_RING → vgroup 2 (RING) on GM AAOS.
-            // Standard AOSP maps USAGE_NOTIFICATION_RINGTONE to CALL_RING context, but
-            // GM's carAudioContexts.xml on this head unit remaps it to BUS_NOTIFICATION
-            // (vgroup 6 SYSTEM) — not adjustable, not on the right physical bus.
-            // SIGNALLING is the closest usage that semantically belongs to the telephony
-            // group and may map to BUS_CALL_RING in GM's config without requiring a
-            // Telecom ConnectionService. Fallback: USAGE_NOTIFICATION_RINGTONE.
-            StreamPurpose.ALERT -> Pair(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING, AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            StreamPurpose.RINGTONE -> Pair(AudioAttributes.USAGE_VOICE_COMMUNICATION_SIGNALLING, AudioAttributes.CONTENT_TYPE_SONIFICATION)
-            StreamPurpose.NAVIGATION -> Pair(AudioAttributes.USAGE_ASSISTANCE_NAVIGATION_GUIDANCE, AudioAttributes.CONTENT_TYPE_SPEECH)
-        }
+    private fun purposeToAttributes(purpose: StreamPurpose): Pair<Int, Int> = AudioRoutePreferences.attributes(purpose)
 
     // ========== Stream Stop Methods ==========
     //
@@ -747,6 +750,7 @@ class DualStreamAudioManager(
 
     /** Stop playback and release all resources. */
     fun release() {
+        routePreferences.unregisterOnSharedPreferenceChangeListener(routeListener)
         synchronized(lock) {
             log("[AUDIO] Releasing DualStreamAudioManager")
 
@@ -1013,7 +1017,11 @@ class DualStreamAudioManager(
                     StreamPurpose.MEDIA -> mediaVolume * minOf(if (isDucked) duckLevel else 1.0f, focusDuckLevel)
                     else -> 1.0f // Non-media purpose slots stay at full volume
                 }
-            track.setVolume(volume)
+            AudioRoutePreferences.volume(context, track, volume)
+            AudioDiagnosticsState.output.value = AudioRoutePreferences.applyOutput(context, track, purpose)
+            track.addOnRoutingChangedListener({ routing ->
+                AudioDiagnosticsState.output.value = "${AudioRoutePreferences.purposeLabel(purpose)} 实际输出：${AudioRoutePreferences.label(routing.routedDevice)}"
+            }, focusHandler)
 
             log(
                 "[AUDIO] Created $purpose AudioTrack: ${format.sampleRate}Hz " +

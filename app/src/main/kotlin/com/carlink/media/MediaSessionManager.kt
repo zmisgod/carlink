@@ -461,8 +461,8 @@ class MediaSessionManager(
                 .setMediaId(BROWSE_INFO_ITEM_ID)
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setTitle("Browsing not available")
-                        .setSubtitle("Carlink mirrors phone projection — open the app to start CarPlay/Android Auto")
+                        .setTitle("暂不支持浏览媒体库")
+                        .setSubtitle("请打开 Carlink 应用，启动 CarPlay / Android Auto 手机投屏")
                         .setIsBrowsable(false)
                         .setIsPlayable(false)
                         .build(),
@@ -509,8 +509,8 @@ class MediaSessionManager(
                     .setMediaId(BROWSE_INFO_ITEM_ID)
                     .setMediaMetadata(
                         MediaMetadata.Builder()
-                            .setTitle("Browsing not available")
-                            .setSubtitle("Carlink mirrors phone projection — open the app to start CarPlay/Android Auto")
+                            .setTitle("暂不支持浏览媒体库")
+                            .setSubtitle("请打开 Carlink 应用，启动 CarPlay / Android Auto 手机投屏")
                             .setIsBrowsable(false)
                             .setIsPlayable(false)
                             .build(),
@@ -967,7 +967,7 @@ class MediaSessionManager(
         synchronized(sessionLock) {
             try {
                 val builder = MediaMetadata.Builder()
-                    .setTitle(title ?: "Unknown")
+                    .setTitle(title ?: "未知")
                     // We set BOTH setTitle and setDisplayTitle because, per Media3
                     // 1.10.0 source observed on 2026-05-03, the
                     // LegacyConversions.convertToMediaMetadataCompat path appeared to
@@ -978,8 +978,8 @@ class MediaSessionManager(
                     // so setting both was the safe choice. Re-verify if Media3's
                     // conversion logic changes on upgrade. (Line numbers omitted —
                     // they drift across releases; grep the function name if needed.)
-                    .setDisplayTitle(title ?: "Unknown")
-                    .setArtist(artist ?: "Unknown")
+                    .setDisplayTitle(title ?: "未知")
+                    .setArtist(artist ?: "未知")
                     .setAlbumTitle(album ?: "")
                     .setSubtitle(appName ?: "Carlink")
                 if (duration > 0) {
@@ -1119,8 +1119,8 @@ class MediaSessionManager(
 
     /**
      * Variant of [setProjectionActive] that publishes phase-specific placeholder text.
-     * Distinguishes the CONNECTING phase ("Connecting to phone...") from the
-     * DEVICE_CONNECTED phase ("Waiting for media...") so all consumer surfaces
+     * Distinguishes the CONNECTING phase ("正在连接手机…") from the
+     * DEVICE_CONNECTED phase ("等待媒体播放…") so all consumer surfaces
      * (cardview, CarMediaApp, cluster) display meaningful state across the adapter
      * lifecycle, not just generic "Connecting...".
      *
@@ -1142,7 +1142,7 @@ class MediaSessionManager(
                 // CarMediaService's "Changing media source due to playback state change"
                 // promotion path before any other source can claim primary playback.
                 p.updatePlaybackState(Player.STATE_BUFFERING, true, 0L, C.TIME_UNSET)
-                val artist = if (connectingPhase) "Connecting to phone..." else "Waiting for media..."
+                val artist = if (connectingPhase) "正在连接手机…" else "等待媒体播放…"
                 p.updateMediaMetadata(buildPlaceholderMetadata(artist))
                 // Reset dedup so the next real playback frame isn't elided.
                 lastPushedPlaying = null
@@ -1162,8 +1162,8 @@ class MediaSessionManager(
      * ARTIST / DISPLAY_SUBTITLE — the same set across surfaces. Setting the full
      * set at construction means surfaces with different fallback chains all
      * render identical text. The `artist` parameter conveys adapter link state
-     * across the lifecycle: "Adapter not detected", "Connecting to phone...",
-     * "Waiting for media...", or any other phase string the caller chooses.
+     * across the lifecycle: "未检测到适配器", "正在连接手机…",
+     * "等待媒体播放…", or any other phase string the caller chooses.
      *
      * Why this matters for the cluster blank-card bug: the silv cluster's
      * processMetadata smali at AudioClusterPresentationService.smali:10820
