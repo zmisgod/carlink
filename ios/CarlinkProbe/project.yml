@@ -1,0 +1,52 @@
+name: CarlinkProbe
+options:
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  PhoneProbe:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.carlink.probe.phone
+        INFOPLIST_FILE: Config/PhoneInfo.plist
+        PRODUCT_NAME: CarlinkPhoneProbe
+  CarPlayProbe:
+    type: application
+    platform: iOS
+    sources: [Sources]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.carlink.probe.carplay
+        INFOPLIST_FILE: Config/CarPlayInfo.plist
+        CODE_SIGN_ENTITLEMENTS: Config/CarPlay.entitlements
+        PRODUCT_NAME: CarlinkCarPlayProbe
+  ProbeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [Tests]
+    dependencies:
+      - target: PhoneProbe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.carlink.probe.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/CarlinkPhoneProbe.app/CarlinkPhoneProbe"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+schemes:
+  PhoneProbe:
+    build:
+      targets:
+        PhoneProbe: all
+    test:
+      targets: [ProbeTests]
+  CarPlayProbe:
+    build:
+      targets:
+        CarPlayProbe: all

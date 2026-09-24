@@ -312,6 +312,7 @@ fun SettingsScreen(
                         )
                     SettingsTab.PHONES -> PhonesTabContent(carlinkManager)
                     SettingsTab.LOGS -> LogsTabContent(context, fileLogManager)
+                    SettingsTab.MUSIC_LOG -> com.carlink.ui.settings.MusicLogTabContent()
                 }
             }
         }

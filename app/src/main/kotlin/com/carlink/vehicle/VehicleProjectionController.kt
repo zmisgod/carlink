@@ -152,7 +152,7 @@ class VehicleProjectionController(private val activity: Activity, owner: Lifecyc
                 if (info.isPlaying) PlaybackState.STATE_PLAYING else PlaybackState.STATE_PAUSED,
                 info.position.coerceAtLeast(0),
                 if (info.isPlaying) 1f else 0f,
-            ).build(),
+            ).setActiveQueueItemId(0L).build(),
         )
     }
 

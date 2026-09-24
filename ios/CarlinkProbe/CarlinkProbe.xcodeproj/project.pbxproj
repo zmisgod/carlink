@@ -1,0 +1,480 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 54;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		419213A9EA869BE13FF6A1A8 /* ProbeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2803FD3BEE630716B0D0012 /* ProbeModel.swift */; };
+		531A6D65270A018B4ED16719 /* ProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05B18076C121201F9A0D4B82 /* ProbeApp.swift */; };
+		7155AD5ECF3BE0968219B807 /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C251BCC389A224F495C8E031 /* CarPlaySceneDelegate.swift */; };
+		75153948026A831CD832C82D /* ProbeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05B18076C121201F9A0D4B82 /* ProbeApp.swift */; };
+		76CC2DC4A2AD761F1BE7302B /* CarPlaySceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C251BCC389A224F495C8E031 /* CarPlaySceneDelegate.swift */; };
+		844D581A5C31E7003B3F997B /* BridgeClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 646617983B2A3DA346EE7FAB /* BridgeClientTests.swift */; };
+		8B7C6CCAA7CD9C0C1F6EBA19 /* ProbeModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2803FD3BEE630716B0D0012 /* ProbeModel.swift */; };
+		B6B076D8F72BD7AE4B71503B /* BridgeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57832C9690D3D5EC592FB60E /* BridgeClient.swift */; };
+		B7B1880AEB2DFF55ECF9B002 /* BridgeClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57832C9690D3D5EC592FB60E /* BridgeClient.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0EBAD2189DE4DC4581098709 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 215351BBD98C3A6AD9B2DAC7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C7A46F8FD2686DA9E11FF6C2;
+			remoteInfo = PhoneProbe;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		05B18076C121201F9A0D4B82 /* ProbeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeApp.swift; sourceTree = "<group>"; };
+		1FE29580EF3B410EDD110104 /* ProbeTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = ProbeTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		529DEA968B4704666747099A /* CarPlayProbe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = CarPlayProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		57832C9690D3D5EC592FB60E /* BridgeClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeClient.swift; sourceTree = "<group>"; };
+		646617983B2A3DA346EE7FAB /* BridgeClientTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BridgeClientTests.swift; sourceTree = "<group>"; };
+		C251BCC389A224F495C8E031 /* CarPlaySceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CarPlaySceneDelegate.swift; sourceTree = "<group>"; };
+		D2803FD3BEE630716B0D0012 /* ProbeModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProbeModel.swift; sourceTree = "<group>"; };
+		D3A0234EBE004CD3289F7728 /* PhoneProbe.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = PhoneProbe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		1292B92F5D0C3915AE292A12 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				646617983B2A3DA346EE7FAB /* BridgeClientTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+		501CB92C3D113664229C5171 = {
+			isa = PBXGroup;
+			children = (
+				9C08F8FBB05E007218E84E7E /* Sources */,
+				1292B92F5D0C3915AE292A12 /* Tests */,
+				C3C7DB7D24C0ADCE02222784 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		9C08F8FBB05E007218E84E7E /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				57832C9690D3D5EC592FB60E /* BridgeClient.swift */,
+				C251BCC389A224F495C8E031 /* CarPlaySceneDelegate.swift */,
+				05B18076C121201F9A0D4B82 /* ProbeApp.swift */,
+				D2803FD3BEE630716B0D0012 /* ProbeModel.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		C3C7DB7D24C0ADCE02222784 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				529DEA968B4704666747099A /* CarPlayProbe.app */,
+				D3A0234EBE004CD3289F7728 /* PhoneProbe.app */,
+				1FE29580EF3B410EDD110104 /* ProbeTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		58F4CC0F50F2803065A09ABA /* ProbeTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0408FB8C1444692EDD3A3DAC /* Build configuration list for PBXNativeTarget "ProbeTests" */;
+			buildPhases = (
+				330E43EC8E99EFDD4C53C0E6 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				E33D4CEAEDD125E577D96BBE /* PBXTargetDependency */,
+			);
+			name = ProbeTests;
+			productName = ProbeTests;
+			productReference = 1FE29580EF3B410EDD110104 /* ProbeTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		C7A46F8FD2686DA9E11FF6C2 /* PhoneProbe */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 24C4EBAFC74D65381DE4AABE /* Build configuration list for PBXNativeTarget "PhoneProbe" */;
+			buildPhases = (
+				1E4E2082663D188B7079F2A7 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PhoneProbe;
+			productName = PhoneProbe;
+			productReference = D3A0234EBE004CD3289F7728 /* PhoneProbe.app */;
+			productType = "com.apple.product-type.application";
+		};
+		D9458B6B5B4F6A6E87E75408 /* CarPlayProbe */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4E005B5F09BF251D992862ED /* Build configuration list for PBXNativeTarget "CarPlayProbe" */;
+			buildPhases = (
+				CD4E63F7D73A34BEABB37C71 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CarPlayProbe;
+			productName = CarPlayProbe;
+			productReference = 529DEA968B4704666747099A /* CarPlayProbe.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		215351BBD98C3A6AD9B2DAC7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					58F4CC0F50F2803065A09ABA = {
+						ProvisioningStyle = Automatic;
+					};
+					C7A46F8FD2686DA9E11FF6C2 = {
+						ProvisioningStyle = Automatic;
+					};
+					D9458B6B5B4F6A6E87E75408 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = BDB10D853302FE18478BDE6E /* Build configuration list for PBXProject "CarlinkProbe" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 501CB92C3D113664229C5171;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				D9458B6B5B4F6A6E87E75408 /* CarPlayProbe */,
+				C7A46F8FD2686DA9E11FF6C2 /* PhoneProbe */,
+				58F4CC0F50F2803065A09ABA /* ProbeTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		1E4E2082663D188B7079F2A7 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B6B076D8F72BD7AE4B71503B /* BridgeClient.swift in Sources */,
+				76CC2DC4A2AD761F1BE7302B /* CarPlaySceneDelegate.swift in Sources */,
+				531A6D65270A018B4ED16719 /* ProbeApp.swift in Sources */,
+				8B7C6CCAA7CD9C0C1F6EBA19 /* ProbeModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		330E43EC8E99EFDD4C53C0E6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				844D581A5C31E7003B3F997B /* BridgeClientTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CD4E63F7D73A34BEABB37C71 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B7B1880AEB2DFF55ECF9B002 /* BridgeClient.swift in Sources */,
+				7155AD5ECF3BE0968219B807 /* CarPlaySceneDelegate.swift in Sources */,
+				75153948026A831CD832C82D /* ProbeApp.swift in Sources */,
+				419213A9EA869BE13FF6A1A8 /* ProbeModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		E33D4CEAEDD125E577D96BBE /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C7A46F8FD2686DA9E11FF6C2 /* PhoneProbe */;
+			targetProxy = 0EBAD2189DE4DC4581098709 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		03247D1350C3F13A918CED45 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		207DC0AFE6962FB29B5FDCF4 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/PhoneInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.carlink.probe.phone;
+				PRODUCT_NAME = CarlinkPhoneProbe;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3EB82813B934C2B15F52F1BE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		5BDC16433649B4F72A890D81 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.carlink.probe.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CarlinkPhoneProbe.app/CarlinkPhoneProbe";
+			};
+			name = Release;
+		};
+		B43464E6AD54FCE169BF01DC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.carlink.probe.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/CarlinkPhoneProbe.app/CarlinkPhoneProbe";
+			};
+			name = Debug;
+		};
+		B6FD3DC79E0CB400327298BF /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/CarPlay.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/CarPlayInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.carlink.probe.carplay;
+				PRODUCT_NAME = CarlinkCarPlayProbe;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C759D7EAD216CB424070677D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Config/CarPlay.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/CarPlayInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.carlink.probe.carplay;
+				PRODUCT_NAME = CarlinkCarPlayProbe;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D8455F9E3C505708080EF443 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Config/PhoneInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.carlink.probe.phone;
+				PRODUCT_NAME = CarlinkPhoneProbe;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0408FB8C1444692EDD3A3DAC /* Build configuration list for PBXNativeTarget "ProbeTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B43464E6AD54FCE169BF01DC /* Debug */,
+				5BDC16433649B4F72A890D81 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		24C4EBAFC74D65381DE4AABE /* Build configuration list for PBXNativeTarget "PhoneProbe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				207DC0AFE6962FB29B5FDCF4 /* Debug */,
+				D8455F9E3C505708080EF443 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		4E005B5F09BF251D992862ED /* Build configuration list for PBXNativeTarget "CarPlayProbe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B6FD3DC79E0CB400327298BF /* Debug */,
+				C759D7EAD216CB424070677D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		BDB10D853302FE18478BDE6E /* Build configuration list for PBXProject "CarlinkProbe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3EB82813B934C2B15F52F1BE /* Debug */,
+				03247D1350C3F13A918CED45 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 215351BBD98C3A6AD9B2DAC7 /* Project object */;
+}

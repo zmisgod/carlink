@@ -290,6 +290,8 @@ object MessageParser {
         val end = buffer.limit()
         val bodyLen = (end - 4).coerceAtLeast(0)
 
+        com.carlink.media.MusicDiagnosticLog.recordFrame(typeInt, payload, end)
+
         val mediaPayload: Map<String, Any> =
             when (mediaType) {
                 MediaType.ALBUM_COVER,

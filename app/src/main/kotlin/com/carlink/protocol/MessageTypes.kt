@@ -229,6 +229,8 @@ enum class InputKeyAction(
     PREVIOUS("上一曲 / 挂断电话", CommandMapping.PREV, CommandMapping.PHONE_HANG_UP),
     PAUSE("播放 / 暂停", CommandMapping.PLAY_PAUSE),
     SIRI("Siri", CommandMapping.SIRI, releaseCommand = CommandMapping.SIRI_BUTTON_UP),
+    ANSWER_CALL("接听电话（独立按键）", CommandMapping.PHONE_ANSWER),
+    HANG_UP_CALL("挂断电话（独立按键）", CommandMapping.PHONE_HANG_UP),
 }
 
 /**

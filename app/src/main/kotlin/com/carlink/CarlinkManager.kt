@@ -26,6 +26,7 @@ import com.carlink.protocol.AudioCommand
 import com.carlink.protocol.AudioDataMessage
 import com.carlink.protocol.BluetoothPairedListMessage
 import com.carlink.protocol.BoxSettingsMessage
+import com.carlink.protocol.CallKeyRouter
 import com.carlink.protocol.CommandMapping
 import com.carlink.protocol.CommandMessage
 import com.carlink.protocol.InfoMessage
@@ -411,7 +412,7 @@ class CarlinkManager(
 
     // Audio routing state flags for two-factor PCM routing (replaces currentStreamPurpose)
     @Volatile private var isSiriAudioActive = false
-    @Volatile private var isIncomingCallActive = false
+    private val callKeyRouter = CallKeyRouter()
     @Volatile private var isPhoneCallAudioActive = false
     @Volatile private var isAlertAudioActive = false
 
@@ -813,11 +814,11 @@ class CarlinkManager(
                     }
 
                     override fun onSkipToNext() {
-                        sendKey(CommandMapping.NEXT)
+                        sendInputKeyAction(InputKeyAction.NEXT)
                     }
 
                     override fun onSkipToPrevious() {
-                        sendKey(CommandMapping.PREV)
+                        sendInputKeyAction(InputKeyAction.PREVIOUS)
                     }
                 },
             )
@@ -1070,7 +1071,7 @@ class CarlinkManager(
         clearCachedMediaMetadata() // Clear stale metadata to prevent race conditions on reconnect
         activeVoiceMode = VoiceMode.NONE // Reset voice mode on disconnect
         isSiriAudioActive = false
-        isIncomingCallActive = false
+        callKeyRouter.reset()
         isPhoneCallAudioActive = false
         isAlertAudioActive = false // Reset purpose on disconnect
         stopMicrophoneCapture()
@@ -1237,23 +1238,17 @@ class CarlinkManager(
                 }
             }
         }
-        val command =
-            if (released) {
-                action.releaseCommand
-            } else if (
-                (action == InputKeyAction.NEXT && isIncomingCallActive) ||
-                    (action == InputKeyAction.PREVIOUS && (isIncomingCallActive || isPhoneCallAudioActive))
-            ) {
-                action.callCommand ?: action.command
-            } else {
-                action.command
-            }
+        val command = callKeyRouter.command(action, released)
         return command?.let {
             logInfo(
-                "[INPUT_KEY] action=${action.name} command=${it.name} released=$released",
+                "[INPUT_KEY] action=${action.name} command=${it.name} released=$released " +
+                    "callState=${callKeyRouter.state} audioTransferMode=${config.audioTransferMode}",
                 tag = Logger.Tags.ADAPTR,
             )
             val sent = sendKey(it)
+            if (!sent) {
+                logWarn("[INPUT_KEY] Send failed: action=${action.name} command=${it.name}", tag = Logger.Tags.ADAPTR)
+            }
             if (action == InputKeyAction.SIRI && !released) {
                 com.carlink.audio.AudioDiagnosticsState.siri.value = if (sent) "Siri 按下命令已发送，等待适配器 AUDIO_SIRI_START" else "Siri 命令发送失败，请检查适配器连接"
             }
@@ -1355,7 +1350,7 @@ class CarlinkManager(
         callback?.onPhoneTypeChanged(PhoneType.UNKNOWN)
         activeVoiceMode = VoiceMode.NONE
         isSiriAudioActive = false
-        isIncomingCallActive = false
+        callKeyRouter.reset()
         isPhoneCallAudioActive = false
         isAlertAudioActive = false
         clearCachedMediaMetadata()
@@ -1948,6 +1943,7 @@ class CarlinkManager(
             }
 
             is UnpluggedMessage -> {
+                callKeyRouter.reset()
                 if (negotiationRejected) {
                     logDebug(
                         "[PHASE] Unplugged after negotiation rejection — not restarting",
@@ -2291,7 +2287,7 @@ class CarlinkManager(
 
         // Handle audio commands for mic capture
         if (message is AudioDataMessage && message.command != null) {
-            handleAudioCommand(message.command, message.decodeType, message.rawCommandId)
+            handleAudioCommand(message.command, message.decodeType, message.rawCommandId, message.audioType)
         }
     }
 
@@ -2327,7 +2323,28 @@ class CarlinkManager(
         )
     }
 
-    private fun handleAudioCommand(command: AudioCommand, messageDecodeType: Int = 5, rawCommandId: Int = command.id) {
+    private fun handleAudioCommand(
+        command: AudioCommand,
+        messageDecodeType: Int = 5,
+        rawCommandId: Int = command.id,
+        audioType: Int = 1,
+    ) {
+        val previousCallState = callKeyRouter.state
+        callKeyRouter.onAudioCommand(command, audioType)
+        if (previousCallState != callKeyRouter.state) {
+            logInfo(
+                "[CALL_STATE] $previousCallState -> ${callKeyRouter.state} command=${command.name} audioType=$audioType",
+                tag = Logger.Tags.ADAPTR,
+            )
+        }
+        // The same stop opcode is used to clear the navigation channel. It must not
+        // stop the main-channel call microphone, audio focus, or call-key handling.
+        if (audioType != 1 && (
+                command == AudioCommand.AUDIO_PHONECALL_START ||
+                    command == AudioCommand.AUDIO_PHONECALL_STOP ||
+                    command == AudioCommand.AUDIO_INCOMING_CALL_INIT
+            )
+        ) return
         logDebug(
             "[AUDIO_CMD] ${command.name} (id=${command.id} siri=$isSiriAudioActive call=$isPhoneCallAudioActive alert=$isAlertAudioActive)",
             tag = Logger.Tags.AUDIO,
@@ -2365,7 +2382,6 @@ class CarlinkManager(
                     tag = Logger.Tags.MIC,
                 )
                 activeVoiceMode = VoiceMode.SIRI
-                isIncomingCallActive = false
                 isSiriAudioActive = true
                 setPurpose(StreamPurpose.SIRI, command)
                 if (hostProvidesMicrophone()) {
@@ -2381,7 +2397,6 @@ class CarlinkManager(
                     tag = Logger.Tags.MIC,
                 )
                 activeVoiceMode = VoiceMode.PHONECALL
-                isIncomingCallActive = false
                 isPhoneCallAudioActive = true
                 endPurpose(StreamPurpose.RINGTONE, command) // Call answered — ringtone is over
                 setPurpose(StreamPurpose.PHONE_CALL, command)
@@ -2424,7 +2439,6 @@ class CarlinkManager(
             AudioCommand.AUDIO_PHONECALL_STOP -> {
                 logInfo("[AUDIO_CMD] Phone call stopped - disabling microphone", tag = Logger.Tags.MIC)
                 activeVoiceMode = VoiceMode.NONE
-                isIncomingCallActive = false
                 isPhoneCallAudioActive = false
                 // Pause the phone-call AudioTrack BEFORE abandoning focus so AAOS
                 // sees no active USAGE_VOICE_COMMUNICATION player. Without this,
@@ -2437,7 +2451,6 @@ class CarlinkManager(
 
             AudioCommand.AUDIO_MEDIA_START -> {
                 logDebug("[AUDIO_CMD] Media audio START command received", tag = Logger.Tags.AUDIO)
-                isIncomingCallActive = false
                 // Adapter signals media resuming — clear any residual adapter ducking from
                 // a previous voice session (Siri/phone call). The adapter does not send an
                 // explicit volume=1.0 restore packet; MEDIA_START is the session boundary.
@@ -2460,7 +2473,6 @@ class CarlinkManager(
             AudioCommand.AUDIO_ALERT_STOP -> {
                 logDebug("[AUDIO_CMD] Alert stopped", tag = Logger.Tags.AUDIO)
                 isAlertAudioActive = false
-                isIncomingCallActive = false
                 endPurpose(StreamPurpose.ALERT, command)
                 endPurpose(StreamPurpose.RINGTONE, command) // Call declined/missed — ringtone is over
             }
@@ -2480,7 +2492,6 @@ class CarlinkManager(
                 // but was never abandoned (no INCOMING_CALL_STOP exists in the protocol), causing
                 // permanent media silence after phone calls.
                 logInfo("[AUDIO_CMD] Incoming call ring (AudioCmd 14)", tag = Logger.Tags.AUDIO)
-                isIncomingCallActive = true
             }
 
             AudioCommand.AUDIO_INPUT_CONFIG -> {
@@ -2734,10 +2745,10 @@ class CarlinkManager(
         }
 
         // CallStatus JSON (subtype 100) — iAP2 CallStateEngine forwarding.
-        // Log at INFO for release troubleshooting. Not consumed for UI — CarPlay/AA
-        // projection already shows call screen, and cluster requires system privilege.
+        // Used for call-key routing independently of ringtone/microphone audio lifetime.
         if (message.type == MediaType.CALL_STATUS) {
             val status = message.payload["CallStatus"] as? Int ?: -1
+            callKeyRouter.onCallStatus(status)
             val direction = message.payload["CallDirection"] as? Int
             val name = message.payload["CallName"] as? String
             val number = message.payload["CallNumber"] as? String
@@ -2745,8 +2756,8 @@ class CarlinkManager(
                 0 -> "idle"
                 1 -> "dialing"
                 2 -> "ringing"
-                3 -> "connected"
-                4 -> "disconnecting"
+                3 -> "connecting"
+                4 -> "active"
                 else -> "?$status"
             }
             val dirName = when (direction) {
@@ -2756,7 +2767,7 @@ class CarlinkManager(
             }
             val caller = name ?: number ?: ""
             logInfo(
-                "[CALL_STATUS] $statusName $dirName${if (caller.isNotEmpty()) " caller=$caller" else ""}",
+                "[CALL_STATUS] $statusName $dirName keyState=${callKeyRouter.state}${if (caller.isNotEmpty()) " caller=$caller" else ""}",
                 tag = Logger.Tags.PHONE,
             )
             return
@@ -2779,7 +2790,7 @@ class CarlinkManager(
         val payload = message.payload
 
         // Extract new song title (if present)
-        val newSongName = (payload["MediaSongName"] as? String)?.takeIf { it.isNotEmpty() }
+        val newSongName = payload["MediaSongName"] as? String
 
         // WHY we snapshot previous state before the song-change reset:
         // Android Auto sends metadata in split increments across consecutive
@@ -2795,11 +2806,11 @@ class CarlinkManager(
         val previousAppName = lastMediaAppName
         val previousDuration = lastDuration
 
-        // Detect song change — clear all cached metadata to prevent stale data mixing
+        // Text arrives as deltas, not complete track snapshots. Artist/album can
+        // precede the title, or be omitted when unchanged (same artist/album).
+        // Keep them until explicitly replaced/cleared or the session disconnects.
+        // Artwork and playback position still have track-local reset semantics.
         if (newSongName != null && newSongName != previousSongName) {
-            lastMediaSongName = null
-            lastMediaArtistName = null
-            lastMediaAlbumName = null
             lastAlbumCover = albumArtworkOrdering.onTitleChanged(android.os.SystemClock.elapsedRealtime())
             lastDuration = 0L
             lastPosition = 0L
@@ -2810,9 +2821,9 @@ class CarlinkManager(
         newSongName?.let {
             lastMediaSongName = it
         }
-        val newArtist = (payload["MediaArtistName"] as? String)?.takeIf { it.isNotEmpty() }
+        val newArtist = payload["MediaArtistName"] as? String
         newArtist?.let { lastMediaArtistName = it }
-        val newAlbum = (payload["MediaAlbumName"] as? String)?.takeIf { it.isNotEmpty() }
+        val newAlbum = payload["MediaAlbumName"] as? String
         newAlbum?.let { lastMediaAlbumName = it }
         val newAppName = (payload["MediaAPPName"] as? String)?.takeIf { it.isNotEmpty() }
         newAppName?.let { lastMediaAppName = it }
@@ -2848,6 +2859,10 @@ class CarlinkManager(
             )
 
         com.carlink.vehicle.VehicleProjectionState.updateMusic(mediaInfo)
+        com.carlink.media.MusicDiagnosticLog.recordMerged(
+            mediaInfo.songTitle, mediaInfo.songArtist, mediaInfo.albumName,
+            mediaInfo.appName, mediaInfo.duration, mediaInfo.position,
+        )
 
         // WHY this broader predicate: AA's incremental metadata stream would
         // otherwise suppress legitimate artist/album/appName/duration-only
@@ -2860,6 +2875,17 @@ class CarlinkManager(
                 (newAppName != null && newAppName != previousAppName) ||
                 albumCover != null ||
                 (duration > 0 && duration != previousDuration)
+
+        // Keep the received text delta and merged snapshot together for real-car
+        // diagnosis: distinguish missing adapter titles from DIM display caching.
+        if (payload.values.any { it is String }) {
+            val textDelta = payload.filterValues { it is String }
+            logInfo(
+                "[MEDIA_DELTA] rx=$textDelta -> title=${mediaInfo.songTitle} " +
+                    "artist=${mediaInfo.songArtist} album=${mediaInfo.albumName}",
+                tag = Logger.Tags.MEDIA,
+            )
+        }
 
         if (metadataChanged) {
             // Full metadata update (title/artist/album/cover/duration)
@@ -2927,7 +2953,7 @@ class CarlinkManager(
         clearCachedMediaMetadata()
         activeVoiceMode = VoiceMode.NONE
         isSiriAudioActive = false
-        isIncomingCallActive = false
+        callKeyRouter.reset()
         isPhoneCallAudioActive = false
         isAlertAudioActive = false
         stopMicrophoneCapture()

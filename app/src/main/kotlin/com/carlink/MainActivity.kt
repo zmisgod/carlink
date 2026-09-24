@@ -603,6 +603,7 @@ class MainActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        com.carlink.bridge.ProbeReceiver.stop()
         vehicleKeys?.close()
         vehicleKeys = null
         vehicleProjection?.close()

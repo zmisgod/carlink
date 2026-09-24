@@ -29,6 +29,7 @@ enum class SettingsTab(
     PHONES("手机", Icons.Default.PhoneAndroid),
     CONTROL("控制", Icons.Default.Settings),
     LOGS("日志", Icons.AutoMirrored.Filled.Article),
+    MUSIC_LOG("音乐日志", Icons.AutoMirrored.Filled.Article),
     ;
 
     companion object {

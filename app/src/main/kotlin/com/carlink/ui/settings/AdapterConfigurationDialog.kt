@@ -798,13 +798,6 @@ fun AdapterConfigurationDialog(
                                 onCancelCapture = onCancelInputKeyCapture,
                                 onRemoveMapping = onRemoveInputKeyMapping,
                             )
-                            LogcatKeyMappingCard(
-                                mappings = logcatMappings,
-                                monitorStatus = logcatMonitorStatus,
-                                readLogsGranted = logcatReadLogsGranted,
-                                onAddMapping = onAddLogcatMapping,
-                                onRemoveMapping = onRemoveLogcatMapping,
-                            )
                         }
 
                         // ===== Misc Tab =====
@@ -1170,7 +1163,7 @@ private fun InputKeyMappingCard(
     val colorScheme = MaterialTheme.colorScheme
     ConfigurationOptionCard(
         title = "外接按键映射",
-        description = "将外接按键绑定到投屏控制操作。",
+        description = "上一曲 / 下一曲依据适配器上报的通话状态切换接挂电话。若状态未上报，可单独绑定接听 / 挂断电话。",
         icon = Icons.Default.SettingsInputComponent,
     ) {
         InputKeyAction.entries.forEach { action ->
